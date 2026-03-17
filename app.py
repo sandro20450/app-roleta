@@ -5,17 +5,14 @@ st.title("🎯 Roleta Tracker - 12 Segundos")
 # 1. MEMÓRIA RÁPIDA E CHAVE DE LIMPEZA
 if 'historico' not in st.session_state:
     st.session_state.historico = []
-# Esta variável vai mudar para recriar a caixa de texto sempre limpa
 if 'chave_input' not in st.session_state:
     st.session_state.chave_input = 0
 
-# A função do Enter agora recria a caixa instantaneamente
 def registrar_numero():
     nome_da_chave = f"num_{st.session_state.chave_input}"
     num = st.session_state[nome_da_chave]
     if num is not None:
         st.session_state.historico.append(int(num))
-        # Muda a chave, o que limpa a caixa sem dar erro
         st.session_state.chave_input += 1 
 
 # 2. FUNÇÕES DE MAPEAMENTO
@@ -67,21 +64,27 @@ if len(st.session_state.historico) > 0:
     if len(duzias_atrasadas) >= 2:
         d1_n, d1_v = duzias_atrasadas[0]
         d2_n, d2_v = duzias_atrasadas[1]
-        alertas_verdes.append(f"💤 **APOSTE:** {d1_n}ª Dúzia + {d2_n}ª Dúzia (Atrasos: {d1_v} e {d2_v}).{emoji_moeda}")
+        alertas_verdes.append(f"💤 **APOSTE:** {d1_n}ª Dúzia + {d2_n}ª Dúzia (Atrasos: {d1_v} e {d2_v}).")
     elif len(duzias_atrasadas) == 1:
         d_n, d_v = duzias_atrasadas[0]
         if duzia_atual != 0:
-            alertas_verdes.append(f"💤 **APOSTE:** {d_n}ª Dúzia + {duzia_atual}ª Dúzia (Última que saiu). *Atraso: {d_v}*{emoji_moeda}")
+            if regra_de_ouro:
+                alertas_verdes.append(f"💤 **APOSTE:** {d_n}ª Dúzia! *Atraso: {d_v}*{emoji_moeda}")
+            else:
+                alertas_verdes.append(f"💤 **APOSTE:** {d_n}ª Dúzia + {duzia_atual}ª Dúzia (Última que saiu). *Atraso: {d_v}*")
 
     # REGRAS DAS LINHAS
     if len(linhas_atrasadas) >= 2:
         l1_n, l1_v = linhas_atrasadas[0]
         l2_n, l2_v = linhas_atrasadas[1]
-        alertas_verdes.append(f"🧵 **APOSTE:** {l1_n}ª Linha + {l2_n}ª Linha (Atrasos: {l1_v} e {l2_v}).{emoji_moeda}")
+        alertas_verdes.append(f"🧵 **APOSTE:** {l1_n}ª Linha + {l2_n}ª Linha (Atrasos: {l1_v} e {l2_v}).")
     elif len(linhas_atrasadas) == 1:
         l_n, l_v = linhas_atrasadas[0]
         if linha_atual != 0:
-            alertas_verdes.append(f"🧵 **APOSTE:** {l_n}ª Linha + {linha_atual}ª Linha (Última que saiu). *Atraso: {l_v}*{emoji_moeda}")
+            if regra_de_ouro:
+                alertas_verdes.append(f"🧵 **APOSTE:** {l_n}ª Linha! *Atraso: {l_v}*{emoji_moeda}")
+            else:
+                alertas_verdes.append(f"🧵 **APOSTE:** {l_n}ª Linha + {linha_atual}ª Linha (Última que saiu). *Atraso: {l_v}*")
 
 # 4. EXIBINDO OS ALERTAS NO TOPO
 if alertas_verdes:
@@ -90,12 +93,11 @@ if alertas_verdes:
 elif len(st.session_state.historico) > 0:
     st.info("Monitorando padrões... Digite o próximo número e aperte ENTER.")
 
-# 5. ÁREA DE ENTRADA (Com Enter Perfeito)
+# 5. ÁREA DE ENTRADA
 st.write("**Digite o número e aperte ENTER (0 a 36):**")
 col_input, col_limpar = st.columns([3, 1])
 
 with col_input:
-    # A chave muda dinamicamente, evitando qualquer erro de estado
     st.number_input(
         "Digite", 
         min_value=0, max_value=36, step=1, value=None, 
@@ -105,7 +107,6 @@ with col_input:
     )
 
 with col_limpar:
-    # O botão limpar agora reseta o histórico e também força a troca da chave
     if st.button("🗑️ Limpar"):
         st.session_state.historico = []
         st.session_state.chave_input += 1
