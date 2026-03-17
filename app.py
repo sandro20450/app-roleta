@@ -19,7 +19,7 @@ def qual_linha(n):
     if n % 3 == 2: return 2
     if n % 3 == 0: return 3
 
-# 3. O CÉREBRO: FAZ OS CÁLCULOS ANTES DE DESENHAR A TELA
+# 3. O CÉREBRO E OS ALERTAS
 alertas_verdes = []
 
 if len(st.session_state.historico) > 0:
@@ -31,7 +31,7 @@ if len(st.session_state.historico) > 0:
             atraso += 1
         return atraso
 
-    # Calculando atrasos
+    # Calculando os atrasos exatos
     atrasos = {
         "d1": contar_atraso(qual_duzia, 1),
         "d2": contar_atraso(qual_duzia, 2),
@@ -45,14 +45,14 @@ if len(st.session_state.historico) > 0:
     duzia_atual = qual_duzia(ultimo_num)
     linha_atual = qual_linha(ultimo_num)
 
-    # Prepara os alertas se houver atraso >= 5
+    # Prepara os alertas se houver atraso >= 5 (AGORA COM OS ÍCONES 💤 e 🧵)
     for i, atraso in enumerate([atrasos["d1"], atrasos["d2"], atrasos["d3"]], start=1):
         if atraso >= 5 and duzia_atual != 0:
-            alertas_verdes.append(f"🚨 APOSTE: {i}ª Dúzia + {duzia_atual}ª Dúzia (Última que saiu). A {i}ª Dúzia está com {atraso} atrasos!")
+            alertas_verdes.append(f"💤 **APOSTE:** {i}ª Dúzia + {duzia_atual}ª Dúzia (Última que saiu). *Atraso: {atraso}*")
 
     for i, atraso in enumerate([atrasos["l1"], atrasos["l2"], atrasos["l3"]], start=1):
         if atraso >= 5 and linha_atual != 0:
-            alertas_verdes.append(f"🚨 APOSTE: {i}ª Linha + {linha_atual}ª Linha (Última que saiu). A {i}ª Linha está com {atraso} atrasos!")
+            alertas_verdes.append(f"🧵 **APOSTE:** {i}ª Linha + {linha_atual}ª Linha (Última que saiu). *Atraso: {atraso}*")
 
 # 4. EXIBINDO OS ALERTAS NO TOPO (st.success)
 if alertas_verdes:
@@ -61,12 +61,12 @@ if alertas_verdes:
 elif len(st.session_state.historico) > 0:
     st.info("Monitorando padrões... Registre o próximo número.")
 
-# 5. ÁREA DE ENTRADA RÁPIDA (Com os botões alinhados)
+# 5. ÁREA DE ENTRADA RÁPIDA
 col_input, col_btn, col_limpar = st.columns([2, 1, 1])
 with col_input:
     numero_sorteado = st.number_input("Digite o número (0 a 36):", min_value=0, max_value=36, step=1)
 with col_btn:
-    st.write("") # Empurra o botão para alinhar com o campo de texto
+    st.write("")
     st.write("")
     if st.button("Registrar"):
         st.session_state.historico.append(numero_sorteado)
@@ -84,19 +84,24 @@ st.write("---")
 if len(st.session_state.historico) > 0:
     st.write("**Atrasos Atuais:**")
     
-    # Usando texto simples formatado para ocupar menos espaço
+    # Função que adiciona o 💚 automaticamente se o atraso for >= 5
+    def formata_linha(nome, valor):
+        icone = " 💚" if valor >= 5 else ""
+        return f"- {nome}: **{valor}**{icone}"
+
+    # Aplicando a função no visual compacto
     col1, col2 = st.columns(2)
     with col1:
         st.markdown(f"""
-        - 1ª Dúzia: **{atrasos['d1']}**
-        - 2ª Dúzia: **{atrasos['d2']}**
-        - 3ª Dúzia: **{atrasos['d3']}**
+        {formata_linha('1ª Dúzia', atrasos['d1'])}
+        {formata_linha('2ª Dúzia', atrasos['d2'])}
+        {formata_linha('3ª Dúzia', atrasos['d3'])}
         """)
     with col2:
         st.markdown(f"""
-        - 1ª Linha: **{atrasos['l1']}**
-        - 2ª Linha: **{atrasos['l2']}**
-        - 3ª Linha: **{atrasos['l3']}**
+        {formata_linha('1ª Linha', atrasos['l1'])}
+        {formata_linha('2ª Linha', atrasos['l2'])}
+        {formata_linha('3ª Linha', atrasos['l3'])}
         """)
         
     st.caption(f"Últimos números registrados: {st.session_state.historico}")
