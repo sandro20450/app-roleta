@@ -2,18 +2,21 @@ import streamlit as st
 
 st.title("🎯 Roleta Tracker - 12 Segundos")
 
-# 1. MEMÓRIA RÁPIDA E GATILHO DO ENTER (A solução para o seu teclado)
+# 1. MEMÓRIA RÁPIDA E CHAVE DE LIMPEZA
 if 'historico' not in st.session_state:
     st.session_state.historico = []
-if 'num_input' not in st.session_state:
-    st.session_state.num_input = None
+# Esta variável vai mudar para recriar a caixa de texto sempre limpa
+if 'chave_input' not in st.session_state:
+    st.session_state.chave_input = 0
 
-# Esta função é acionada automaticamente quando você aperta ENTER
+# A função do Enter agora recria a caixa instantaneamente
 def registrar_numero():
-    num = st.session_state.num_input
+    nome_da_chave = f"num_{st.session_state.chave_input}"
+    num = st.session_state[nome_da_chave]
     if num is not None:
         st.session_state.historico.append(int(num))
-        st.session_state.num_input = None # Esvazia a caixa instantaneamente
+        # Muda a chave, o que limpa a caixa sem dar erro
+        st.session_state.chave_input += 1 
 
 # 2. FUNÇÕES DE MAPEAMENTO
 def qual_duzia(n):
@@ -85,21 +88,27 @@ if alertas_verdes:
     for alerta in alertas_verdes:
         st.success(alerta)
 elif len(st.session_state.historico) > 0:
-    st.info("Monitorando padrões... Digite o próximo número.")
+    st.info("Monitorando padrões... Digite o próximo número e aperte ENTER.")
 
-# 5. ÁREA DE ENTRADA (Agora funciona 100% no Enter)
+# 5. ÁREA DE ENTRADA (Com Enter Perfeito)
 st.write("**Digite o número e aperte ENTER (0 a 36):**")
 col_input, col_limpar = st.columns([3, 1])
 
 with col_input:
-    # O segredo do Enter está no on_change=registrar_numero
-    st.number_input("Digite", min_value=0, max_value=36, step=1, value=None, 
-                    key="num_input", on_change=registrar_numero, label_visibility="collapsed")
+    # A chave muda dinamicamente, evitando qualquer erro de estado
+    st.number_input(
+        "Digite", 
+        min_value=0, max_value=36, step=1, value=None, 
+        key=f"num_{st.session_state.chave_input}", 
+        on_change=registrar_numero, 
+        label_visibility="collapsed"
+    )
 
 with col_limpar:
+    # O botão limpar agora reseta o histórico e também força a troca da chave
     if st.button("🗑️ Limpar"):
         st.session_state.historico = []
-        st.session_state.num_input = None
+        st.session_state.chave_input += 1
         st.rerun()
 
 st.write("---")
