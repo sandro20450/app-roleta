@@ -96,23 +96,23 @@ if len(st.session_state.historico) > 0:
             else:
                 alertas_verdes.append(f"🧵 **APOSTE:** {l_n}ª Linha + {linha_atual}ª Linha (Última que saiu). *Atraso: {l_v}*")
 
-    # --- LÓGICA DA ESTRATÉGIA IPT (EXCESSO de 4) ---
-    if len(st.session_state.historico) >= 4:
-        ultimos_4_ipt = st.session_state.historico[-4:]
-        grupos_4_ipt = [qual_ipt(n) for n in ultimos_4_ipt]
-        if grupos_4_ipt[0] == grupos_4_ipt[1] == grupos_4_ipt[2] == grupos_4_ipt[3] and grupos_4_ipt[0] != '0':
-            if grupos_4_ipt[0] == 'I': alertas_amarelos.append("⚡ **ESTRATÉGIA IPT:** Grupo **I** saiu 4x seguidas! APOSTE: **P** + **T**.")
-            elif grupos_4_ipt[0] == 'P': alertas_amarelos.append("⚡ **ESTRATÉGIA IPT:** Grupo **P** saiu 4x seguidas! APOSTE: **I** + **T**.")
-            elif grupos_4_ipt[0] == 'T': alertas_amarelos.append("⚡ **ESTRATÉGIA IPT:** Grupo **T** saiu 4x seguidas! APOSTE: **I** + **P**.")
+    # --- LÓGICA DA ESTRATÉGIA IPT (EXCESSO de 3) ---
+    if len(st.session_state.historico) >= 3:
+        ultimos_3_ipt = st.session_state.historico[-3:]
+        grupos_3_ipt = [qual_ipt(n) for n in ultimos_3_ipt]
+        if grupos_3_ipt[0] == grupos_3_ipt[1] == grupos_3_ipt[2] and grupos_3_ipt[0] != '0':
+            if grupos_3_ipt[0] == 'I': alertas_amarelos.append("⚡ **ESTRATÉGIA IPT:** Grupo **I** saiu 3x seguidas! APOSTE: **P** + **T**.")
+            elif grupos_3_ipt[0] == 'P': alertas_amarelos.append("⚡ **ESTRATÉGIA IPT:** Grupo **P** saiu 3x seguidas! APOSTE: **I** + **T**.")
+            elif grupos_3_ipt[0] == 'T': alertas_amarelos.append("⚡ **ESTRATÉGIA IPT:** Grupo **T** saiu 3x seguidas! APOSTE: **I** + **P**.")
 
-    # --- LÓGICA DA ESTRATÉGIA 123 (EXCESSO de 4) ---
-    if len(st.session_state.historico) >= 4:
-        ultimos_4 = st.session_state.historico[-4:]
-        grupos_4_123 = [qual_123(n) for n in ultimos_4]
-        if grupos_4_123[0] == grupos_4_123[1] == grupos_4_123[2] == grupos_4_123[3] and grupos_4_123[0] != '0':
-            if grupos_4_123[0] == '1': alertas_amarelos.append("🔥 **ESTRATÉGIA 123:** Conjunto **1** saiu 4x seguidas! APOSTE: **Conjunto 2** + **Conjunto 3**.")
-            elif grupos_4_123[0] == '2': alertas_amarelos.append("🔥 **ESTRATÉGIA 123:** Conjunto **2** saiu 4x seguidas! APOSTE: **Conjunto 1** + **Conjunto 3**.")
-            elif grupos_4_123[0] == '3': alertas_amarelos.append("🔥 **ESTRATÉGIA 123:** Conjunto **3** saiu 4x seguidas! APOSTE: **Conjunto 1** + **Conjunto 2**.")
+    # --- LÓGICA DA ESTRATÉGIA 123 (EXCESSO de 3) ---
+    if len(st.session_state.historico) >= 3:
+        ultimos_3_123 = st.session_state.historico[-3:]
+        grupos_3_123 = [qual_123(n) for n in ultimos_3_123]
+        if grupos_3_123[0] == grupos_3_123[1] == grupos_3_123[2] and grupos_3_123[0] != '0':
+            if grupos_3_123[0] == '1': alertas_amarelos.append("🔥 **ESTRATÉGIA 123:** Conjunto **1** saiu 3x seguidas! APOSTE: **Conjunto 2** + **Conjunto 3**.")
+            elif grupos_3_123[0] == '2': alertas_amarelos.append("🔥 **ESTRATÉGIA 123:** Conjunto **2** saiu 3x seguidas! APOSTE: **Conjunto 1** + **Conjunto 3**.")
+            elif grupos_3_123[0] == '3': alertas_amarelos.append("🔥 **ESTRATÉGIA 123:** Conjunto **3** saiu 3x seguidas! APOSTE: **Conjunto 1** + **Conjunto 2**.")
 
 # 4. EXIBINDO OS ALERTAS NO TOPO
 if alertas_amarelos:
@@ -162,7 +162,6 @@ if len(st.session_state.historico) > 0:
     
     # Criando o visual do histórico com as duas estratégias (AGORA COM OS MAIS RECENTES PRIMEIRO)
     historico_visual = []
-    # AQUI ESTÁ A MUDANÇA: Usando reversed() para ler de trás para frente
     for n in reversed(st.session_state.historico):
         grp_ipt = qual_ipt(n)
         grp_123 = qual_123(n)
