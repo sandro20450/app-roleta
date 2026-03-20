@@ -28,7 +28,6 @@ def qual_linha(n):
     if n % 3 == 2: return 2
     if n % 3 == 0: return 3
 
-# NOVA FUNÇÃO: Mapeamento Estratégia IPT
 def qual_ipt(n):
     if n == 0: return '0'
     if 1 <= n <= 24:
@@ -36,9 +35,16 @@ def qual_ipt(n):
     if 25 <= n <= 36:
         return 'T'
 
+# NOVA FUNÇÃO: Mapeamento Estratégia 123 (AGORA PERFEITAMENTE EQUILIBRADA COM 12 NÚMEROS CADA)
+def qual_123(n):
+    if n == 0: return '0'
+    if n in [1, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]: return '1'
+    if n in [2, 8, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]: return '2'
+    if n in [3, 4, 5, 6, 9, 30, 31, 32, 33, 34, 35, 36]: return '3'
+
 # 3. O CÉREBRO E OS ALERTAS INTELIGENTES
 alertas_verdes = []
-alertas_amarelos = [] # Novo canal de alertas para o IPT
+alertas_amarelos = [] # Canal para IPT ⚡ e 123 🔥
 
 if len(st.session_state.historico) > 0:
     # --- LÓGICA DAS DÚZIAS E LINHAS ---
@@ -51,12 +57,8 @@ if len(st.session_state.historico) > 0:
         return atraso
 
     atrasos = {
-        "d1": contar_atraso(qual_duzia, 1),
-        "d2": contar_atraso(qual_duzia, 2),
-        "d3": contar_atraso(qual_duzia, 3),
-        "l1": contar_atraso(qual_linha, 1),
-        "l2": contar_atraso(qual_linha, 2),
-        "l3": contar_atraso(qual_linha, 3)
+        "d1": contar_atraso(qual_duzia, 1), "d2": contar_atraso(qual_duzia, 2), "d3": contar_atraso(qual_duzia, 3),
+        "l1": contar_atraso(qual_linha, 1), "l2": contar_atraso(qual_linha, 2), "l3": contar_atraso(qual_linha, 3)
     }
 
     ultimo_num = st.session_state.historico[-1]
@@ -95,25 +97,28 @@ if len(st.session_state.historico) > 0:
             else:
                 alertas_verdes.append(f"🧵 **APOSTE:** {l_n}ª Linha + {linha_atual}ª Linha (Última que saiu). *Atraso: {l_v}*")
 
-    # --- LÓGICA DA ESTRATÉGIA IPT (EXCESSO) ---
-    if len(st.session_state.historico) >= 3:
-        ultimos_3 = st.session_state.historico[-3:]
-        grupos_3 = [qual_ipt(n) for n in ultimos_3]
-        
-        # Verifica se os últimos 3 são exatamente do mesmo grupo e não são Zero
-        if grupos_3[0] == grupos_3[1] == grupos_3[2] and grupos_3[0] != '0':
-            grupo_repetido = grupos_3[0]
-            if grupo_repetido == 'I':
-                alertas_amarelos.append("⚡ **ESTRATÉGIA IPT:** O Grupo **I** (Ímpares) saiu 3x seguidas! APOSTE: **Grupo P** + **Grupo T**.")
-            elif grupo_repetido == 'P':
-                alertas_amarelos.append("⚡ **ESTRATÉGIA IPT:** O Grupo **P** (Pares) saiu 3x seguidas! APOSTE: **Grupo I** + **Grupo T**.")
-            elif grupo_repetido == 'T':
-                alertas_amarelos.append("⚡ **ESTRATÉGIA IPT:** O Grupo **T** (25 a 36) saiu 3x seguidas! APOSTE: **Grupo I** + **Grupo P**.")
+    # --- LÓGICA DA ESTRATÉGIA IPT (EXCESSO de 4) ---
+    if len(st.session_state.historico) >= 4:
+        ultimos_4_ipt = st.session_state.historico[-4:]
+        grupos_4_ipt = [qual_ipt(n) for n in ultimos_4_ipt]
+        if grupos_4_ipt[0] == grupos_4_ipt[1] == grupos_4_ipt[2] == grupos_4_ipt[3] and grupos_4_ipt[0] != '0':
+            if grupos_4_ipt[0] == 'I': alertas_amarelos.append("⚡ **ESTRATÉGIA IPT:** Grupo **I** saiu 4x seguidas! APOSTE: **P** + **T**.")
+            elif grupos_4_ipt[0] == 'P': alertas_amarelos.append("⚡ **ESTRATÉGIA IPT:** Grupo **P** saiu 4x seguidas! APOSTE: **I** + **T**.")
+            elif grupos_4_ipt[0] == 'T': alertas_amarelos.append("⚡ **ESTRATÉGIA IPT:** Grupo **T** saiu 4x seguidas! APOSTE: **I** + **P**.")
+
+    # --- LÓGICA DA ESTRATÉGIA 123 (EXCESSO de 4) ---
+    if len(st.session_state.historico) >= 4:
+        ultimos_4 = st.session_state.historico[-4:]
+        grupos_4_123 = [qual_123(n) for n in ultimos_4]
+        if grupos_4_123[0] == grupos_4_123[1] == grupos_4_123[2] == grupos_4_123[3] and grupos_4_123[0] != '0':
+            if grupos_4_123[0] == '1': alertas_amarelos.append("🔥 **ESTRATÉGIA 123:** Conjunto **1** saiu 4x seguidas! APOSTE: **Conjunto 2** + **Conjunto 3**.")
+            elif grupos_4_123[0] == '2': alertas_amarelos.append("🔥 **ESTRATÉGIA 123:** Conjunto **2** saiu 4x seguidas! APOSTE: **Conjunto 1** + **Conjunto 3**.")
+            elif grupos_4_123[0] == '3': alertas_amarelos.append("🔥 **ESTRATÉGIA 123:** Conjunto **3** saiu 4x seguidas! APOSTE: **Conjunto 1** + **Conjunto 2**.")
 
 # 4. EXIBINDO OS ALERTAS NO TOPO
 if alertas_amarelos:
     for alerta in alertas_amarelos:
-        st.warning(alerta) # Usa o painel amarelo para destacar o Raio
+        st.warning(alerta)
         
 if alertas_verdes:
     for alerta in alertas_verdes:
@@ -128,11 +133,9 @@ col_input, col_limpar = st.columns([3, 1])
 
 with col_input:
     st.number_input(
-        "Digite", 
-        min_value=0, max_value=36, step=1, value=None, 
+        "Digite", min_value=0, max_value=36, step=1, value=None, 
         key=f"num_{st.session_state.chave_input}", 
-        on_change=registrar_numero, 
-        label_visibility="collapsed"
+        on_change=registrar_numero, label_visibility="collapsed"
     )
 
 with col_limpar:
@@ -143,42 +146,34 @@ with col_limpar:
 
 st.write("---")
 
-# 6. PAINEL DE ATRASOS COMPACTO E HISTÓRICO IPT
+# 6. PAINEL DE ATRASOS COMPACTO E HISTÓRICO
 if len(st.session_state.historico) > 0:
     st.write("**Atrasos Atuais:**")
-    
     def formata_linha(nome, valor):
         icone = " 💚" if valor >= 5 else ""
         return f"- {nome}: **{valor}**{icone}"
 
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown(f"""
-        {formata_linha('1ª Dúzia', atrasos['d1'])}
-        {formata_linha('2ª Dúzia', atrasos['d2'])}
-        {formata_linha('3ª Dúzia', atrasos['d3'])}
-        """)
+        st.markdown(f"{formata_linha('1ª Dúzia', atrasos['d1'])}\n{formata_linha('2ª Dúzia', atrasos['d2'])}\n{formata_linha('3ª Dúzia', atrasos['d3'])}")
     with col2:
-        st.markdown(f"""
-        {formata_linha('1ª Linha', atrasos['l1'])}
-        {formata_linha('2ª Linha', atrasos['l2'])}
-        {formata_linha('3ª Linha', atrasos['l3'])}
-        """)
+        st.markdown(f"{formata_linha('1ª Linha', atrasos['l1'])}\n{formata_linha('2ª Linha', atrasos['l2'])}\n{formata_linha('3ª Linha', atrasos['l3'])}")
     
     st.write("---")
     
-    # Criando o visual do histórico com as letras (I, P, T)
+    # Criando o visual do histórico com as duas estratégias
     historico_visual = []
     for n in st.session_state.historico:
-        grp = qual_ipt(n)
-        if grp == '0':
+        grp_ipt = qual_ipt(n)
+        grp_123 = qual_123(n)
+        if n == 0:
             historico_visual.append("**0**")
         else:
-            historico_visual.append(f"{n}**({grp})**")
+            historico_visual.append(f"{n}**({grp_ipt}-{grp_123})**")
             
     texto_historico = " - ".join(historico_visual)
     
-    st.write("**Últimos giros (com Grupos IPT):**")
+    st.write("**Últimos giros (Grupos IPT - 123):**")
     st.markdown(texto_historico)
     
 else:
