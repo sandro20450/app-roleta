@@ -1,13 +1,20 @@
 import streamlit as st
 import requests
 
-# 1. A SUA CHAVE DE ACESSO (Cole a chave do e-mail dentro das aspas abaixo)
+# 1. A SUA CHAVE DE ACESSO
 API_KEY = "06a0a753d3cb6191c16c3a0ec17dbf50" 
 
-st.title("⚽ Radar de Arbitragem Esportiva")
-st.info("Varrendo o mercado de apostas em busca de lucro matemático (Surebets).")
+# --- NOVA TÁTICA: FILTRO DE CASAS BRASILEIRAS ---
+# O aplicativo só vai aceitar odds se o nome da casa estiver nesta lista.
+# Você pode adicionar ou remover nomes depois, se quiser.
+casas_brasileiras = [
+    "bet365", "betano", "betfair", "pinnacle", "1xbet", 
+    "betway", "888sport", "sportingbet", "bwin", "marathonbet", "william hill"
+]
 
-# 2. ESCOLHENDO O CAMPO DE BATALHA
+st.title("⚽ Radar de Arbitragem Esportiva")
+st.info("Varrendo o mercado de apostas em busca de lucro matemático (Surebets) focando apenas em casas que operam no Brasil.")
+
 st.write("---")
 liga_escolhida = st.selectbox(
     "Selecione o Campeonato para rastrear:",
@@ -22,13 +29,11 @@ liga_escolhida = st.selectbox(
 
 esporte_id = liga_escolhida[1]
 
-# 3. O BOTÃO DE VARREDURA
-if st.button("🚀 Iniciar Varredura de Odds"):
+if st.button("🚀 Iniciar Varredura de Odds (Filtro BR)"):
     if API_KEY == "COLE_SUA_CHAVE_AQUI" or API_KEY == "":
         st.error("⚠️ Alerta tático: Você esqueceu de colocar a sua API Key na linha 5 do código!")
     else:
         with st.spinner('Conectando aos servidores das casas de apostas...'):
-            # Montando o pedido para a API
             url = f"https://api.the-odds-api.com/v4/sports/{esporte_id}/odds/?apiKey={API_KEY}&regions=eu,uk,us&markets=h2h"
             
             resposta = requests.get(url)
@@ -41,11 +46,10 @@ if st.button("🚀 Iniciar Varredura de Odds"):
                 if not jogos:
                     st.warning("Nenhum jogo encontrado para esta liga com odds abertas no momento.")
                 else:
-                    st.success(f"Radar ativo! Analisando {len(jogos)} jogos...")
+                    st.success(f"Radar ativo! Analisando {len(jogos)} jogos usando apenas as Casas Brasileiras...")
                     
                     oportunidades_encontradas = 0
                     
-                    # 4. O CÉREBRO MATEMÁTICO ANALISANDO CADA JOGO
                     for jogo in jogos:
                         time_casa = jogo['home_team']
                         time_fora = jogo['away_team']
@@ -57,13 +61,19 @@ if st.button("🚀 Iniciar Varredura de Odds"):
                         melhor_odd_fora = 0.0
                         casa_da_odd_fora = ""
                         
-                        # Procurando a melhor odd em cada casa de apostas
                         for bookmaker in jogo['bookmakers']:
                             nome_casa = bookmaker['title']
+                            
+                            # A MÁGICA DO FILTRO ACONTECE AQUI
+                            # Ele transforma o nome da casa em letras minúsculas e checa se está na nossa lista VIP
+                            nome_casa_minusculo = nome_casa.lower()
+                            if not any(casa_br in nome_casa_minusculo for casa_br in casas_brasileiras):
+                                continue # Se não for uma casa brasileira, ele pula e ignora as odds dela
+                            
                             mercados = bookmaker['markets']
                             
                             for mercado in mercados:
-                                if mercado['key'] == 'h2h': # h2h significa "Head to Head" (Vitória/Empate/Derrota)
+                                if mercado['key'] == 'h2h':
                                     for opcao in mercado['outcomes']:
                                         odd = opcao['price']
                                         nome_opcao = opcao['name']
@@ -78,11 +88,10 @@ if st.button("🚀 Iniciar Varredura de Odds"):
                                             melhor_odd_fora = odd
                                             casa_da_odd_fora = nome_casa
 
-                        # 5. O CÁLCULO DE ARBITRAGEM (SUREBET)
+                        # O CÁLCULO DE ARBITRAGEM
                         if melhor_odd_casa > 0 and melhor_odd_empate > 0 and melhor_odd_fora > 0:
                             margem = (1 / melhor_odd_casa) + (1 / melhor_odd_empate) + (1 / melhor_odd_fora)
                             
-                            # Condição de Lucro Garantido (Soma menor que 100%)
                             if margem < 1.0:
                                 oportunidades_encontradas += 1
                                 lucro_pct = (1.0 - margem) * 100
@@ -93,20 +102,20 @@ if st.button("🚀 Iniciar Varredura de Odds"):
                                 
                                 col1, col2, col3 = st.columns(3)
                                 with col1:
-                                    st.metric(label=f"Vitória 1 ({casa_da_odd_casa})", value=f"{melhor_odd_casa}")
+                                    st.metric(label=f"Vit. Casa ({casa_da_odd_casa})", value=f"{melhor_odd_casa}")
                                 with col2:
                                     st.metric(label=f"Empate ({casa_da_odd_empate})", value=f"{melhor_odd_empate}")
                                 with col3:
-                                    st.metric(label=f"Vitória 2 ({casa_da_odd_fora})", value=f"{melhor_odd_fora}")
+                                    st.metric(label=f"Vit. Fora ({casa_da_odd_fora})", value=f"{melhor_odd_fora}")
                                     
                                 st.code(f"""
 Para R$ 1.000 investidos:
-- R$ {(1000/melhor_odd_casa)/margem:.2f} na casa '{casa_da_odd_casa}' (Vitória {time_casa})
-- R$ {(1000/melhor_odd_empate)/margem:.2f} na casa '{casa_da_odd_empate}' (Empate)
-- R$ {(1000/melhor_odd_fora)/margem:.2f} na casa '{casa_da_odd_fora}' (Vitória {time_fora})
+- R$ {(1000/melhor_odd_casa)/margem:.2f} na casa '{casa_da_odd_casa}'
+- R$ {(1000/melhor_odd_empate)/margem:.2f} na casa '{casa_da_odd_empate}'
+- R$ {(1000/melhor_odd_fora)/margem:.2f} na casa '{casa_da_odd_fora}'
 -------------------------
-Retorno em qualquer cenário: R$ {(1000/margem):.2f}
+Retorno Limpo em qualquer cenário: R$ {(1000/margem):.2f}
                                 """)
 
                     if oportunidades_encontradas == 0:
-                        st.info("Varredura concluída. A matemática das casas está ajustada neste exato segundo. Nenhuma brecha encontrada nesta liga. Tente varrer novamente mais tarde.")
+                        st.info("Varredura concluída. As odds entre as casas brasileiras estão alinhadas neste momento. Tente novamente mais tarde para buscar novas brechas.")
