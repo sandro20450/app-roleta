@@ -5,8 +5,7 @@ from datetime import datetime, timezone, timedelta
 # 1. A SUA CHAVE DE ACESSO
 API_KEY = "06a0a753d3cb6191c16c3a0ec17dbf50" 
 
-# --- NOVA TÁTICA: FILTRO DE CASAS BRASILEIRAS ---
-# IMPORTANTE: Escreva sempre em letras MINÚSCULAS aqui para o filtro funcionar.
+# --- FILTRO DE CASAS BRASILEIRAS ---
 casas_brasileiras = [
     "bet365", "betano", "betfair", "pinnacle", "1xbet", 
     "betway", "888sport", "sportingbet", "bwin", "marathonbet", "william hill",
@@ -14,7 +13,7 @@ casas_brasileiras = [
 ]
 
 st.title("⚽ Radar de Arbitragem Esportiva")
-st.info("Varrendo o mercado em busca de lucro matemático (Surebets). Apenas jogos futuros e casas que operam no Brasil.")
+st.info("Varrendo o mercado em busca de lucro matemático (Surebets). Apenas jogos futuros e casas BR.")
 
 st.write("---")
 liga_escolhida = st.selectbox(
@@ -30,7 +29,7 @@ liga_escolhida = st.selectbox(
 
 esporte_id = liga_escolhida[1]
 
-if st.button("🚀 Iniciar Varredura de Odds (Filtro BR + Jogos Futuros)"):
+if st.button("🚀 Iniciar Varredura de Odds (Filtro BR + Idade da Odd)"):
     if API_KEY == "COLE_SUA_CHAVE_AQUI" or API_KEY == "":
         st.error("⚠️ Alerta tático: Você esqueceu de colocar a sua API Key na linha 6 do código!")
     else:
@@ -50,39 +49,39 @@ if st.button("🚀 Iniciar Varredura de Odds (Filtro BR + Jogos Futuros)"):
                     st.success(f"Radar ativo! Analisando jogos...")
                     
                     oportunidades_encontradas = 0
-                    agora_utc = datetime.now(timezone.utc) # Pega a hora exata de agora
+                    agora_utc = datetime.now(timezone.utc)
                     
                     for jogo in jogos:
                         # --- FILTRO DE TEMPO ---
                         horario_jogo_str = jogo['commence_time']
-                        # Converte a hora que a API manda para o formato de relógio do Python
                         horario_jogo_utc = datetime.strptime(horario_jogo_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
                         
-                        # Se o jogo já começou ou já passou, pula para o próximo!
                         if horario_jogo_utc < agora_utc:
                             continue
                         
-                        # Convertendo para o horário de Brasília (UTC-3) para mostrar na tela para você
                         horario_brasilia = horario_jogo_utc - timedelta(hours=3)
                         data_hora_formatada = horario_brasilia.strftime("%d/%m/%Y às %H:%M")
                         
                         time_casa = jogo['home_team']
                         time_fora = jogo['away_team']
                         
-                        melhor_odd_casa = 0.0
-                        casa_da_odd_casa = ""
-                        melhor_odd_empate = 0.0
-                        casa_da_odd_empate = ""
-                        melhor_odd_fora = 0.0
-                        casa_da_odd_fora = ""
+                        melhor_odd_casa, melhor_odd_empate, melhor_odd_fora = 0.0, 0.0, 0.0
+                        casa_da_odd_casa, casa_da_odd_empate, casa_da_odd_fora = "", "", ""
+                        
+                        # Novas variáveis para rastrear a idade (em minutos) da odd
+                        idade_casa, idade_empate, idade_fora = 999, 999, 999
                         
                         for bookmaker in jogo['bookmakers']:
                             nome_casa = bookmaker['title']
-                            
-                            # Filtro VIP: Apenas as casas da nossa lista
                             nome_casa_minusculo = nome_casa.lower()
+                            
                             if not any(casa_br in nome_casa_minusculo for casa_br in casas_brasileiras):
                                 continue 
+                            
+                            # Calcula há quantos minutos a casa atualizou essa odd
+                            ultima_att_str = bookmaker['last_update']
+                            ultima_att_utc = datetime.strptime(ultima_att_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+                            minutos_atras = int((agora_utc - ultima_att_utc).total_seconds() / 60)
                             
                             mercados = bookmaker['markets']
                             
@@ -95,25 +94,32 @@ if st.button("🚀 Iniciar Varredura de Odds (Filtro BR + Jogos Futuros)"):
                                         if nome_opcao == time_casa and odd > melhor_odd_casa:
                                             melhor_odd_casa = odd
                                             casa_da_odd_casa = nome_casa
+                                            idade_casa = minutos_atras
                                         elif nome_opcao == 'Draw' and odd > melhor_odd_empate:
                                             melhor_odd_empate = odd
                                             casa_da_odd_empate = nome_casa
+                                            idade_empate = minutos_atras
                                         elif nome_opcao == time_fora and odd > melhor_odd_fora:
                                             melhor_odd_fora = odd
                                             casa_da_odd_fora = nome_casa
+                                            idade_fora = minutos_atras
 
                         # O CÁLCULO DE ARBITRAGEM
                         if melhor_odd_casa > 0 and melhor_odd_empate > 0 and melhor_odd_fora > 0:
                             margem = (1 / melhor_odd_casa) + (1 / melhor_odd_empate) + (1 / melhor_odd_fora)
                             
-                            if margem < 1.0:
+                            # Filtro extra: Só avisa se o lucro for maior que 0.5% (Evita poeira de mercado)
+                            if margem < 0.995: 
                                 oportunidades_encontradas += 1
                                 lucro_pct = (1.0 - margem) * 100
                                 
                                 st.write("---")
                                 st.success(f"🎯 **SUREBET ENCONTRADA:** Lucro de **{lucro_pct:.2f}%**")
                                 st.write(f"**⚽ {time_casa} x {time_fora}**")
-                                st.write(f"🕒 **Data/Hora do Jogo:** {data_hora_formatada} (Horário de Brasília)")
+                                st.write(f"🕒 **Início do Jogo:** {data_hora_formatada} (Brasília)")
+                                
+                                # Alerta visual sobre a idade das odds
+                                st.caption(f"⏱️ **Atraso da leitura:** Casa ({idade_casa} min) | Empate ({idade_empate} min) | Fora ({idade_fora} min)")
                                 
                                 col1, col2, col3 = st.columns(3)
                                 with col1:
@@ -133,4 +139,4 @@ Retorno Limpo em qualquer cenário: R$ {(1000/margem):.2f}
                                 """)
 
                     if oportunidades_encontradas == 0:
-                        st.info("Varredura concluída. As odds entre as casas brasileiras estão alinhadas neste momento e nenhum jogo futuro apresenta distorção. Tente novamente mais tarde.")
+                        st.info("Varredura concluída. As odds estão alinhadas ou o lucro é menor que 0.5%. Tente novamente nos horários de pico (pré-jogos).")
