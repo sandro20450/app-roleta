@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 
 st.title("🎯 Roleta Tracker - 12 Segundos")
 
@@ -43,10 +44,9 @@ def qual_123(n):
 
 # 3. O CÉREBRO E OS ALERTAS INTELIGENTES
 alertas_verdes = []
-alertas_amarelos = [] # Canal para IPT ⚡ e 123 🔥
+alertas_amarelos = []
 
 if len(st.session_state.historico) > 0:
-    # --- LÓGICA DAS DÚZIAS E LINHAS ---
     def contar_atraso(funcao_mapeamento, valor_alvo):
         atraso = 0
         for num in reversed(st.session_state.historico):
@@ -70,7 +70,6 @@ if len(st.session_state.historico) > 0:
     regra_de_ouro = len(duzias_atrasadas) > 0 and len(linhas_atrasadas) > 0
     emoji_moeda = " 💰 (REGRA DE OURO!)" if regra_de_ouro else ""
 
-    # REGRAS DAS DÚZIAS
     if len(duzias_atrasadas) >= 2:
         d1_n, d1_v = duzias_atrasadas[0]
         d2_n, d2_v = duzias_atrasadas[1]
@@ -83,7 +82,6 @@ if len(st.session_state.historico) > 0:
             else:
                 alertas_verdes.append(f"💤 **APOSTE:** {d_n}ª Dúzia + {duzia_atual}ª Dúzia (Última que saiu). *Atraso: {d_v}*")
 
-    # REGRAS DAS LINHAS
     if len(linhas_atrasadas) >= 2:
         l1_n, l1_v = linhas_atrasadas[0]
         l2_n, l2_v = linhas_atrasadas[1]
@@ -96,7 +94,6 @@ if len(st.session_state.historico) > 0:
             else:
                 alertas_verdes.append(f"🧵 **APOSTE:** {l_n}ª Linha + {linha_atual}ª Linha (Última que saiu). *Atraso: {l_v}*")
 
-    # --- LÓGICA DA ESTRATÉGIA IPT (EXCESSO de 3) ---
     if len(st.session_state.historico) >= 3:
         ultimos_3_ipt = st.session_state.historico[-3:]
         grupos_3_ipt = [qual_ipt(n) for n in ultimos_3_ipt]
@@ -105,7 +102,6 @@ if len(st.session_state.historico) > 0:
             elif grupos_3_ipt[0] == 'P': alertas_amarelos.append("⚡ **ESTRATÉGIA IPT:** Grupo **P** saiu 3x seguidas! APOSTE: **I** + **T**.")
             elif grupos_3_ipt[0] == 'T': alertas_amarelos.append("⚡ **ESTRATÉGIA IPT:** Grupo **T** saiu 3x seguidas! APOSTE: **I** + **P**.")
 
-    # --- LÓGICA DA ESTRATÉGIA 123 (EXCESSO de 3) ---
     if len(st.session_state.historico) >= 3:
         ultimos_3_123 = st.session_state.historico[-3:]
         grupos_3_123 = [qual_123(n) for n in ultimos_3_123]
@@ -114,15 +110,13 @@ if len(st.session_state.historico) > 0:
             elif grupos_3_123[0] == '2': alertas_amarelos.append("🔥 **ESTRATÉGIA 123:** Conjunto **2** saiu 3x seguidas! APOSTE: **Conjunto 1** + **Conjunto 3**.")
             elif grupos_3_123[0] == '3': alertas_amarelos.append("🔥 **ESTRATÉGIA 123:** Conjunto **3** saiu 3x seguidas! APOSTE: **Conjunto 1** + **Conjunto 2**.")
 
-# 4. EXIBINDO OS ALERTAS NO TOPO
+# 4. EXIBINDO OS ALERTAS
 if alertas_amarelos:
     for alerta in alertas_amarelos:
         st.warning(alerta)
-        
 if alertas_verdes:
     for alerta in alertas_verdes:
         st.success(alerta)
-        
 if not alertas_verdes and not alertas_amarelos and len(st.session_state.historico) > 0:
     st.info("Monitorando padrões... Digite o próximo número e aperte ENTER.")
 
@@ -143,6 +137,21 @@ with col_limpar:
         st.session_state.chave_input += 1
         st.rerun()
 
+# --- TRUQUE DO FOCO AUTOMÁTICO (AUTOFOCUS) ---
+components.html(
+    """
+    <script>
+    const doc = window.parent.document;
+    const inputs = doc.querySelectorAll('input[type="number"]');
+    if (inputs.length > 0) {
+        inputs[0].focus();
+    }
+    </script>
+    """,
+    height=0, width=0
+)
+# ---------------------------------------------
+
 st.write("---")
 
 # 6. PAINEL DE ATRASOS COMPACTO E HISTÓRICO
@@ -160,7 +169,6 @@ if len(st.session_state.historico) > 0:
     
     st.write("---")
     
-    # Criando o visual do histórico com as duas estratégias (AGORA COM OS MAIS RECENTES PRIMEIRO)
     historico_visual = []
     for n in reversed(st.session_state.historico):
         grp_ipt = qual_ipt(n)
@@ -174,6 +182,5 @@ if len(st.session_state.historico) > 0:
     
     st.write("**Últimos giros (Mais recentes primeiro):**")
     st.markdown(texto_historico)
-    
 else:
     st.info("Nenhum número registrado no momento.")
