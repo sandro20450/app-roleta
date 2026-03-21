@@ -9,7 +9,8 @@ API_KEY = "06a0a753d3cb6191c16c3a0ec17dbf50"
 # Você pode adicionar ou remover nomes depois, se quiser.
 casas_brasileiras = [
     "bet365", "betano", "betfair", "pinnacle", "1xbet", 
-    "betway", "888sport", "sportingbet", "bwin", "marathonbet", "william hill"
+    "betway", "888sport", "sportingbet", "bwin", "marathonbet", "william hill",
+    "KTO", "F12 Bet", "superbet", "Mostebet", "Pixbet"
 ]
 
 st.title("⚽ Radar de Arbitragem Esportiva")
