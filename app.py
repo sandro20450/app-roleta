@@ -1,142 +1,55 @@
 import streamlit as st
-import streamlit.components.v1 as components
+import requests
 
-st.title("🎯 Roleta Tracker - 12 Segundos")
+st.title("⚽ Radar de Arbitragem - Mercado Esportivo")
 
-# 1. MEMÓRIA RÁPIDA E CHAVE DE LIMPEZA
-if 'historico' not in st.session_state:
-    st.session_state.historico = []
-if 'chave_input' not in st.session_state:
-    st.session_state.chave_input = 0
-
-def registrar_numero():
-    nome_da_chave = f"num_{st.session_state.chave_input}"
-    num = st.session_state[nome_da_chave]
-    if num is not None:
-        st.session_state.historico.append(int(num))
-        st.session_state.chave_input += 1 
-
-# 2. FUNÇÕES DE MAPEAMENTO (Apenas IPT e 123 ativas)
-def qual_ipt(n):
-    if n == 0: return '0'
-    if 1 <= n <= 24:
-        return 'I' if n % 2 != 0 else 'P'
-    if 25 <= n <= 36:
-        return 'T'
-
-def qual_123(n):
-    if n == 0: return '0'
-    if n in [1, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]: return '1'
-    if n in [2, 8, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]: return '2'
-    if n in [3, 4, 5, 6, 9, 30, 31, 32, 33, 34, 35, 36]: return '3'
-
-# --- ABASTECIMENTO EM LOTE ---
-with st.expander("📥 Inserir Histórico Inicial (Lote)"):
-    lote_input = st.text_input("Cole os números separados por vírgula:")
-    if st.button("Carregar Histórico"):
-        try:
-            st.session_state.historico = [int(x.strip()) for x in lote_input.split(',') if x.strip().isdigit()][::-1]
-            st.session_state.chave_input += 1
-            st.success(f"✅ {len(st.session_state.historico)} números carregados com sucesso!")
-        except Exception as e:
-            st.error("Erro ao carregar. Certifique-se de usar apenas números e vírgulas.")
-st.write("---")
-
-# 3. O CÉREBRO E OS ALERTAS CRUZADOS
-alertas = []
-
-if len(st.session_state.historico) > 0:
-    # Filtra os zeros (o "fantasma" que não interfere na regra)
-    numeros_validos = [n for n in st.session_state.historico if n != 0]
-    
-    # Precisamos de pelo menos 2 números não-zero para cruzar a estratégia
-    if len(numeros_validos) >= 2:
-        # Pega os dois últimos giros válidos
-        n1 = numeros_validos[-2] # Penúltimo
-        n2 = numeros_validos[-1] # Último (mais recente)
-        
-        ipt1, ipt2 = qual_ipt(n1), qual_ipt(n2)
-        g1_1, g1_2 = qual_123(n1), qual_123(n2)
-        
-        # REGRA A: IPT igual E 123 diferente -> Alerta IPT ⚡
-        if ipt1 == ipt2 and g1_1 != g1_2:
-            if ipt2 == 'I':
-                alertas.append(f"⚡ **CRUZAMENTO IPT:** ({n1} e {n2}) repetiram o Grupo **I**, mas espalharam no 123. APOSTE: **P** + **T**.")
-            elif ipt2 == 'P':
-                alertas.append(f"⚡ **CRUZAMENTO IPT:** ({n1} e {n2}) repetiram o Grupo **P**, mas espalharam no 123. APOSTE: **I** + **T**.")
-            elif ipt2 == 'T':
-                alertas.append(f"⚡ **CRUZAMENTO IPT:** ({n1} e {n2}) repetiram o Grupo **T**, mas espalharam no 123. APOSTE: **I** + **P**.")
-
-        # REGRA B: 123 igual E IPT diferente -> Alerta 123 🔥
-        elif g1_1 == g1_2 and ipt1 != ipt2:
-            if g1_2 == '1':
-                alertas.append(f"🔥 **CRUZAMENTO 123:** ({n1} e {n2}) repetiram o Conjunto **1**, mas espalharam no IPT. APOSTE: **2** + **3**.")
-            elif g1_2 == '2':
-                alertas.append(f"🔥 **CRUZAMENTO 123:** ({n1} e {n2}) repetiram o Conjunto **2**, mas espalharam no IPT. APOSTE: **1** + **3**.")
-            elif g1_2 == '3':
-                alertas.append(f"🔥 **CRUZAMENTO 123:** ({n1} e {n2}) repetiram o Conjunto **3**, mas espalharam no IPT. APOSTE: **1** + **2**.")
-
-# 4. EXIBINDO OS ALERTAS
-if alertas:
-    for alerta in alertas:
-        st.success(alerta) # Usei a cor Verde (success) para ficar bem destacado na hora de apostar
-else:
-    if len(st.session_state.historico) > 0:
-        st.info("Aguardando cruzamento de estratégias... Digite o próximo número.")
-
-# 5. ÁREA DE ENTRADA
-st.write("**Digite o número e aperte ENTER (0 a 36):**")
-col_input, col_limpar = st.columns([3, 1])
-
-with col_input:
-    st.number_input(
-        "Digite", min_value=0, max_value=36, step=1, value=None, 
-        key=f"num_{st.session_state.chave_input}", 
-        on_change=registrar_numero, label_visibility="collapsed"
-    )
-
-with col_limpar:
-    if st.button("🗑️ Limpar Tudo"):
-        st.session_state.historico = []
-        st.session_state.chave_input += 1
-        st.rerun()
-
-# --- TRUQUE DO FOCO AUTOMÁTICO ---
-components.html(
-    f"""
-    <script id="foco_{st.session_state.chave_input}">
-    setTimeout(function() {{
-        const doc = window.parent.document;
-        const inputs = doc.querySelectorAll('input[type="number"]');
-        if (inputs.length > 0) {{
-            inputs[0].focus();
-        }}
-    }}, 100);
-    </script>
-    """,
-    height=0, width=0
-)
-# ---------------------------------------------
+# Painel de instruções usando o componente nativo de informação
+st.info("Conectando ao mercado... O radar varre as casas de apostas em busca de distorções matemáticas nas odds.")
 
 st.write("---")
 
-# 6. HISTÓRICO VISUAL (Novo formato compacto solicitado)
-if len(st.session_state.historico) > 0:
-    historico_visual = []
+# Simulando a entrada de dados de uma API para você ver o visual nativo operando
+# Em breve, substituiremos isso pela leitura real em tempo real da "The-Odds-API"
+jogo_exemplo = "Palmeiras vs. River Plate"
+
+# odds fictícias para demonstrar uma Surebet (Casa A pagando muito no Palmeiras, Casa B pagando muito no River)
+odd_vitoria_casa = 2.50  # Encontrada na Bet365
+odd_empate = 3.40        # Encontrada na Betano
+odd_vitoria_fora = 3.80  # Encontrada na Pinnacle
+
+# Exibindo as cotações com st.metric (Visual limpo e direto)
+st.write(f"**Partida Mapeada:** {jogo_exemplo}")
+
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric(label="Vitória (Mandante)", value=f"{odd_vitoria_casa}")
+with col2:
+    st.metric(label="Empate", value=f"{odd_empate}")
+with col3:
+    st.metric(label="Vitória (Visitante)", value=f"{odd_vitoria_fora}")
+
+st.write("---")
+
+# O CÉREBRO DA OPERAÇÃO: O Cálculo de Arbitragem
+# Fórmula: (1 / Odd A) + (1 / Odd Empate) + (1 / Odd B)
+margem_mercado = (1 / odd_vitoria_casa) + (1 / odd_empate) + (1 / odd_vitoria_fora)
+
+if margem_mercado < 1.0:
+    lucro_percentual = (1.0 - margem_mercado) * 100
+    st.success(f"💰 **OPORTUNIDADE DE ARBITRAGEM DETECTADA!** Lucro garantido de **{lucro_percentual:.2f}%**.")
     
-    # Lê de trás para frente (Mais recentes primeiro)
-    for n in reversed(st.session_state.historico):
-        if n == 0:
-            historico_visual.append("**0**")
-        else:
-            grp_ipt = qual_ipt(n)
-            grp_123 = qual_123(n)
-            # Novo formato: (15:I-1)
-            historico_visual.append(f"**({n}:{grp_ipt}-{grp_123})**")
-            
-    texto_historico = " - ".join(historico_visual)
+    st.write("**Instruções de Entrada (Para uma banca de R$ 1.000):**")
+    # Cálculo de distribuição de apostas para garantir o mesmo retorno em qualquer cenário
+    aposta_casa = (1000 / odd_vitoria_casa) / margem_mercado
+    aposta_empate = (1000 / odd_empate) / margem_mercado
+    aposta_fora = (1000 / odd_vitoria_fora) / margem_mercado
     
-    st.write("**Últimos giros (Mais recentes primeiro):**")
-    st.markdown(texto_historico)
+    st.code(f"""
+    1. Aposte R$ {aposta_casa:.2f} na Vitória (Casa A)
+    2. Aposte R$ {aposta_empate:.2f} no Empate (Casa B)
+    3. Aposte R$ {aposta_fora:.2f} na Vitória Visitante (Casa C)
+    
+    Retorno total independentemente de quem vencer: R$ {(1000 / margem_mercado):.2f}
+    """)
 else:
-    st.info("Nenhum número registrado no momento.")
+    st.warning("Nenhuma distorção matemática encontrada para este jogo no momento. A casa ainda tem a vantagem.")
