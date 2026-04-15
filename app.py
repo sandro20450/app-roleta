@@ -3,55 +3,71 @@ import pandas as pd
 from datetime import date
 
 # =============================================================================
-# --- 1. CONFIGURAÇÕES GERAIS E VISUAIS ---
+# --- 1. CONFIGURAÇÕES GERAIS E VISUAIS (TEMA CLARO E EDUCACIONAL) ---
 # =============================================================================
-st.set_page_config(page_title="Portal do Aluno - Projeto Saber", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Projeto Saber - Gestão Escolar", page_icon="🏫", layout="wide")
 
-# CSS para criar os "Botões Lúdicos" e Painéis
 st.markdown("""
 <style>
-    .stApp { background-color: #f4f6f9; color: #333; }
-    h1, h2, h3 { color: #1e3d59 !important; font-family: 'Arial', sans-serif; }
+    /* Reset de cores para tema claro escolar */
+    .stApp { background-color: #f4f7f6; color: #1e3d59; }
+    h1, h2, h3, h4, h5 { color: #004d99 !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     
-    /* Cards Lúdicos do Menu Principal */
-    .card-menu {
+    /* Estilo dos Cards de Métrica (Dashboard) */
+    div[data-testid="metric-container"] {
+        background-color: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    /* Estilo do Diário de Seleção */
+    .painel-selecao {
         background-color: #ffffff;
         border-radius: 15px;
-        padding: 20px;
-        text-align: center;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        transition: transform 0.3s ease;
-        border-bottom: 5px solid #007bff;
+        padding: 25px;
+        border-top: 5px solid #004d99;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         margin-bottom: 20px;
     }
-    .card-menu:hover { transform: translateY(-5px); }
-    .icon-ludico { font-size: 3.5em; margin-bottom: 10px; }
-    .titulo-card { font-size: 1.2em; font-weight: bold; color: #1e3d59; }
     
-    /* Estilo para Área Restrita */
-    .painel-restrito {
-        background-color: #e9ecef;
-        border-radius: 10px;
-        padding: 20px;
-        border-left: 5px solid #28a745;
+    /* Botões personalizados */
+    .stButton>button {
+        border-radius: 8px;
+        font-weight: bold;
+    }
+    
+    /* Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #ffffff;
+        border-right: 1px solid #ddd;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # =============================================================================
-# --- 2. SISTEMA DE AUTENTICAÇÃO (MOCKUP INICIAL) ---
+# --- 2. BANCO DE DADOS SIMULADO (MOCKUP) ---
 # =============================================================================
-# Aqui conectaremos ao Google Sheets depois. Por enquanto, dados de teste.
 MOCK_USERS = {
-    "pai123": {"senha": "123", "perfil": "responsavel", "nome": "João (Pai do Pedrinho)"},
-    "prof456": {"senha": "456", "perfil": "professor", "nome": "Profª Maria (Matemática)"},
-    "admin": {"senha": "admin", "perfil": "diretoria", "nome": "Diretor Carlos"}
+    "prof456": {"senha": "456", "perfil": "professor", "nome": "LUCIANA AUGUSTO SOARES"},
+    "admin": {"senha": "admin", "perfil": "diretoria", "nome": "Diretoria"},
+    "pai123": {"senha": "123", "perfil": "responsavel", "nome": "Responsável Teste"}
 }
 
-if "usuario_logado" not in st.session_state:
-    st.session_state.usuario_logado = None
-if "perfil_logado" not in st.session_state:
-    st.session_state.perfil_logado = None
+ALUNOS_MOCK = [
+    "ANA JULIA SILVA SOARES COSTA",
+    "ANA LETICIA FERREIRA DA SILVA",
+    "ANDRIELLY DA SILVA OLIVEIRA",
+    "ANNA FLAVIA DOS SANTOS ARAQUAM",
+    "ANNA SOFIA DOS SANTOS",
+    "ARTHUR GUILHERME DA SILVA SEVERINO",
+    "DANIEL AUGUSTO DOS SANTOS NASCIMENTO"
+]
+
+if "usuario_logado" not in st.session_state: st.session_state.usuario_logado = None
+if "perfil_logado" not in st.session_state: st.session_state.perfil_logado = None
+if "diario_aberto" not in st.session_state: st.session_state.diario_aberto = False
 
 def fazer_login(usuario, senha):
     if usuario in MOCK_USERS and MOCK_USERS[usuario]["senha"] == senha:
@@ -59,133 +75,199 @@ def fazer_login(usuario, senha):
         st.session_state.perfil_logado = MOCK_USERS[usuario]["perfil"]
         st.success("Acesso Concedido!")
         st.rerun()
-    else:
-        st.error("Usuário ou senha incorretos!")
+    else: st.error("Credenciais inválidas!")
 
 def fazer_logout():
     st.session_state.usuario_logado = None
     st.session_state.perfil_logado = None
+    st.session_state.diario_aberto = False
     st.rerun()
 
 # =============================================================================
-# --- 3. BARRA LATERAL (LOGIN / MENU) ---
+# --- 3. MENU LATERAL (SIDEBAR) ---
 # =============================================================================
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/3106/3106194.png", width=100) # Ícone de escola genérico
-    st.markdown("### 🏫 Escola Projeto Saber")
+    st.markdown("<h2 style='text-align:center;'>🌎 PROJETO SABER</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center; font-size:0.8em; color:#888;'>Colégio e Curso Potencial</p>", unsafe_allow_html=True)
     st.markdown("---")
     
     if st.session_state.usuario_logado is None:
-        st.markdown("### 🔐 Portal de Acesso")
-        user_input = st.text_input("Usuário (RA ou Matrícula)")
+        st.markdown("### 🔐 Acesso ao Sistema")
+        user_input = st.text_input("Usuário")
         pass_input = st.text_input("Senha", type="password")
-        if st.button("Entrar", use_container_width=True):
+        if st.button("Entrar", use_container_width=True, type="primary"):
             fazer_login(user_input, pass_input)
-            
-        st.markdown("---")
-        st.info("💡 **Dica de Teste:**\n\n- Pai: `pai123` / Senha: `123`\n- Prof: `prof456` / Senha: `456`\n- Dir: `admin` / Senha: `admin`")
+        st.info("💡 **Dica de Teste:**\n\nLogin: `prof456`\nSenha: `456`")
     else:
-        st.success(f"Olá, {st.session_state.usuario_logado}")
-        st.info(f"Perfil: {st.session_state.perfil_logado.upper()}")
-        if st.button("🚪 Sair (Logout)", use_container_width=True):
-            fazer_logout()
-
-# =============================================================================
-# --- 4. TELA PRINCIPAL (FRONT-END PÚBLICO E PRIVADO) ---
-# =============================================================================
-
-# SE NINGUÉM ESTIVER LOGADO -> MOSTRA A VITRINE DA ESCOLA (Front-end Lúdico)
-if st.session_state.usuario_logado is None:
-    st.markdown("<h1 style='text-align: center;'>Bem-vindo à Escola Projeto Saber! 🎒</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #666;'>Educação de excelência para o futuro do seu filho. Selecione uma opção abaixo:</p><br>", unsafe_allow_html=True)
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.markdown("""
-        <div class="card-menu" style="border-color: #ff9900;">
-            <div class="icon-ludico">📝</div>
-            <div class="titulo-card">Matrículas 2026</div>
-            <p style="font-size:0.9em; color:#666;">Garanta a vaga do seu filho hoje.</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Ver Vagas", key="btn_mat"): st.toast("Redirecionando para formulário de matrícula...")
+        st.success(f"👤 {st.session_state.usuario_logado}")
         
-    with col2:
-        st.markdown("""
-        <div class="card-menu" style="border-color: #28a745;">
-            <div class="icon-ludico">💰</div>
-            <div class="titulo-card">Financeiro</div>
-            <p style="font-size:0.9em; color:#666;">Mensalidades e materiais.</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Ver Planos", key="btn_fin"): st.toast("Área de mensalidades em construção.")
+        # Menu de Navegação (Simulando a imagem)
+        st.markdown("**PEDAGÓGICO**")
+        st.button("📖 Notas", use_container_width=True)
+        st.button("📅 Frequência", use_container_width=True)
+        st.button("📄 Ocorrências", use_container_width=True)
+        st.button("🗓️ Calendário", use_container_width=True)
+        
+        st.markdown("---")
+        if st.button("🚪 Sair", use_container_width=True): fazer_logout()
 
-    with col3:
-        st.markdown("""
-        <div class="card-menu" style="border-color: #dc3545;">
-            <div class="icon-ludico">📍</div>
-            <div class="titulo-card">Localização</div>
-            <p style="font-size:0.9em; color:#666;">Nossa estrutura física.</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Ver Mapa", key="btn_loc"): st.toast("Abrindo Google Maps...")
+# =============================================================================
+# --- 4. ÁREA PRINCIPAL (FRONT-END) ---
+# =============================================================================
 
-    with col4:
-        st.markdown("""
-        <div class="card-menu" style="border-color: #17a2b8;">
-            <div class="icon-ludico">📞</div>
-            <div class="titulo-card">Contatos</div>
-            <p style="font-size:0.9em; color:#666;">Fale com a secretaria.</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Falar no Zap", key="btn_zap"): st.toast("Abrindo WhatsApp da Escola...")
+if st.session_state.usuario_logado is None:
+    # --- VITRINE PARA PAIS / PÚBLICO ---
+    st.markdown("<h1 style='text-align: center;'>Bem-vindo ao Portal do Aluno</h1>", unsafe_allow_html=True)
+    col1, col2, col3, col4 = st.columns(4)
+    with col1: st.info("📝 **Matrículas 2026**\n\nGaranta a vaga do seu filho.")
+    with col2: st.success("💰 **Financeiro**\n\nAcesse boletos e pagamentos.")
+    with col3: st.warning("📍 **Localização**\n\nVeja como chegar à escola.")
+    with col4: st.error("📞 **Contatos**\n\nFale com a secretaria.")
 
-# SE ESTIVER LOGADO COMO PAI/RESPONSÁVEL
-elif st.session_state.perfil_logado == "responsavel":
-    st.header("🎓 Painel do Aluno")
-    st.markdown('<div class="painel-restrito">Aqui você acompanha o desenvolvimento do Pedrinho.</div><br>', unsafe_allow_html=True)
-    
-    tab_notas, tab_avisos = st.tabs(["📝 Boletim Escolar", "🔔 Mural de Avisos"])
-    with tab_notas:
-        st.subheader("Notas do 1º Bimestre")
-        # Exemplo visual de tabela de notas
-        df_notas = pd.DataFrame({
-            "Disciplina": ["Matemática", "Português", "História", "Ciências"],
-            "Nota": [8.5, 9.0, 7.5, 10.0],
-            "Faltas": [2, 0, 1, 0],
-            "Situação": ["🟢 Aprovado", "🟢 Aprovado", "🟡 Em Exame", "🟢 Aprovado"]
-        })
-        st.dataframe(df_notas, use_container_width=True, hide_index=True)
-    with tab_avisos:
-        st.info("📅 **Reunião de Pais:** Dia 20/04 às 19h no auditório principal.")
-        st.warning("⚽ **Jogos Escolares:** Inscrições abertas para o time de Futsal até sexta-feira.")
-
-# SE ESTIVER LOGADO COMO PROFESSOR
 elif st.session_state.perfil_logado == "professor":
-    st.header("🍎 Diário de Classe - Professor")
-    st.markdown('<div class="painel-restrito" style="border-color: #ff9900;">Lançamento de notas e presença das suas turmas.</div><br>', unsafe_allow_html=True)
+    # --- PAINEL DO PROFESSOR (O CORAÇÃO DO SISTEMA) ---
     
-    st.selectbox("Selecione a Turma:", ["6º Ano A", "7º Ano B", "8º Ano A"])
-    st.selectbox("Bimestre:", ["1º Bimestre", "2º Bimestre", "3º Bimestre", "4º Bimestre"])
+    # Abas Superiores
+    aba_dash, aba_freq, aba_notas = st.tabs(["📊 Dashboard", "📅 Frequência", "📝 Notas"])
     
-    st.markdown("### Lançar Notas:")
-    col_a, col_b = st.columns([3, 1])
-    with col_a: st.text_input("Nome do Aluno", "Pedrinho da Silva")
-    with col_b: st.number_input("Nota", min_value=0.0, max_value=10.0, value=0.0)
-    st.button("💾 Salvar Nota", type="primary")
+    # ---------------------------------------------------------
+    # ABA 1: DASHBOARD (VISÃO GERAL)
+    # ---------------------------------------------------------
+    with aba_dash:
+        st.markdown("<h2>Visão Geral</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#666;'>Bem-vindo de volta! Aqui está o resumo da sua escola hoje.</p>", unsafe_allow_html=True)
+        
+        c1, c2, c3, c4, c5 = st.columns(5)
+        c1.metric("Alunos Ativos", "620", "Total")
+        c2.metric("Presentes", "584", "Hoje")
+        c3.metric("Ausentes", "36", "Faltas")
+        c4.metric("Notas Diário", "28/28", "Progresso")
+        c5.metric("Frequência Média", "94%", "Mensal")
+        
+        st.markdown("---")
+        col_esq, col_dir = st.columns([2, 1])
+        with col_esq:
+            st.markdown("#### 📈 Atividade Recente (Turmas)")
+            st.info("🚀 **1º Ano A:** Turma atingiu 94% da capacidade!")
+            st.info("🚀 **5º Ano B:** Lançamento de notas concluído.")
+            st.info("🚀 **6º Ano A:** Turma atingiu 99% da capacidade!")
+        with col_dir:
+            st.markdown("#### 🗓️ Calendário Escolar")
+            st.markdown("**20/04** - Tiradentes (Feriado)")
+            st.markdown("**23/04** - Fim do 1º Bimestre")
+            st.markdown("**26/04** - Início do 2º Bimestre")
+            st.markdown("**01/05** - Dia do Trabalho")
+            
+    # ---------------------------------------------------------
+    # ABA 2: FREQUÊNCIA
+    # ---------------------------------------------------------
+    with aba_freq:
+        st.markdown("<h2>Registro de Frequência</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#666;'>Selecione o status de presença para cada aluno.</p>", unsafe_allow_html=True)
+        
+        col_turma, col_data = st.columns(2)
+        with col_turma: st.selectbox("Turma:", ["6º Ano A", "7º Ano B", "8º Ano A"], key="freq_turma")
+        with col_data: st.date_input("Data da Aula:", date.today())
+        
+        st.markdown("---")
+        st.markdown("<div style='display:flex; justify-content:space-between; padding:0 20px;'><b>ALUNO</b><b>STATUS DE PRESENÇA</b></div>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin:5px 0;'>", unsafe_allow_html=True)
+        
+        for aluno in ALUNOS_MOCK:
+            ca, cb = st.columns([3, 2])
+            with ca:
+                st.markdown(f"**{aluno}**<br><span style='font-size:0.8em; color:#888;'>ID: {hash(aluno)}</span>", unsafe_allow_html=True)
+            with cb:
+                # Botões de rádio horizontais simulando os blocos (P, F, FJ)
+                st.radio("Status", ["P (Presente)", "F (Falta)", "FJ (Justificada)"], horizontal=True, label_visibility="collapsed", key=f"rad_{aluno}")
+            st.markdown("<hr style='margin:5px 0; opacity:0.3;'>", unsafe_allow_html=True)
+        
+        st.button("💾 Salvar Frequência", type="primary", use_container_width=True)
 
-# SE ESTIVER LOGADO COMO DIRETORIA (ADMIN)
-elif st.session_state.perfil_logado == "diretoria":
-    st.header("👑 Painel de Controle - Diretoria")
-    st.markdown('<div class="painel-restrito" style="border-color: #dc3545;">Gestão total do sistema e banco de dados.</div><br>', unsafe_allow_html=True)
-    
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Total de Alunos", "450", "+12 matrículas")
-    c2.metric("Professores Ativos", "25", "100% presentes")
-    c3.metric("Mensalidades Atrasadas", "5", "-2 regularizadas")
-    
-    st.markdown("---")
-    st.subheader("Gerenciar Cadastros")
-    st.selectbox("O que deseja gerenciar?", ["🏫 Alunos", "🍎 Professores", "💰 Financeiro"])
-    st.button("➕ Adicionar Novo Registro")
+    # ---------------------------------------------------------
+    # ABA 3: NOTAS (DIÁRIO DE CLASSE)
+    # ---------------------------------------------------------
+    with aba_notas:
+        if not st.session_state.diario_aberto:
+            st.markdown(f"<h1 style='text-align:center;'>Bom dia, Prof. {st.session_state.usuario_logado.split()[0]}!</h1>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align:center; color:#666;'>Pronto para lançar os resultados? Selecione a turma abaixo.</p>", unsafe_allow_html=True)
+            
+            st.markdown('<div class="painel-selecao">', unsafe_allow_html=True)
+            st.text_input("👤 Professor", st.session_state.usuario_logado, disabled=True)
+            sel_turma = st.selectbox("👥 Turma", ["Selecione...", "6º Ano A", "7º Ano B", "8º Ano C"])
+            sel_disc = st.selectbox("📄 Disciplina", ["Selecione...", "Língua Portuguesa", "Matemática", "História"])
+            sel_bim = st.selectbox("📅 Bimestre", ["Selecione...", "1º Bimestre", "2º Bimestre", "3º Bimestre", "4º Bimestre"])
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            if sel_turma != "Selecione..." and sel_disc != "Selecione..." and sel_bim != "Selecione...":
+                if st.button("Abrir Diário de Notas ➔", type="primary", use_container_width=True):
+                    st.session_state.diario_aberto = True
+                    st.session_state.ctx_turma = sel_turma
+                    st.session_state.ctx_disc = sel_disc
+                    st.session_state.ctx_bim = sel_bim
+                    st.rerun()
+            else:
+                st.button("Abrir Diário de Notas ➔", disabled=True, use_container_width=True)
+
+        else:
+            # DIÁRIO ABERTO (Quadro de Notas)
+            st.markdown(f"""
+            <div style='background-color:#e6f2ff; padding:15px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;'>
+                <div>
+                    <span style='color:#004d99; font-weight:bold; font-size:0.9em;'>CONTEXTO ATUAL: <span style='background:#004d99; color:#fff; padding:2px 8px; border-radius:10px;'>{st.session_state.ctx_bim}</span></span><br>
+                    <span style='font-size:1.2em;'>👤 <b>{st.session_state.usuario_logado}</b> &nbsp;|&nbsp; 👥 {st.session_state.ctx_turma} &nbsp;|&nbsp; 📄 {st.session_state.ctx_disc}</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button("⬅️ Trocar Período/Turma"):
+                st.session_state.diario_aberto = False
+                st.rerun()
+                
+            st.markdown("### Quadro de Médias")
+            st.caption("Fórmula de Média: (AV1 + AV2 + AV3 + PE) / 4")
+            
+            # Criando DataFrame Editável para simular a planilha de notas da imagem
+            df_notas = pd.DataFrame({
+                "ALUNO": ALUNOS_MOCK,
+                "AV1 (Prova)": [10.0, 6.5, 7.5, 9.0, 8.5, 8.5, 7.0],
+                "AV2 (Prova)": [7.0, 5.0, 7.0, 8.0, 6.0, 4.0, 7.0],
+                "AV3 (Prova)": [6.0, 4.0, 6.0, 4.0, 3.0, 4.0, 7.0],
+                "PE (Trabalho)": [3.0, 3.0, 3.0, 2.0, 3.0, 3.0, 3.0]
+            })
+            
+            # Editor de dados do Streamlit (Permite digitar igual Excel)
+            df_editado = st.data_editor(
+                df_notas,
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "ALUNO": st.column_config.TextColumn(disabled=True),
+                    "AV1 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"),
+                    "AV2 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"),
+                    "AV3 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"),
+                    "PE (Trabalho)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"),
+                }
+            )
+            
+            # Cálculo em tempo real da Média Final e Situação
+            st.markdown("### Resultado Consolidado")
+            df_resultado = df_editado.copy()
+            df_resultado["MÉDIA FINAL"] = df_resultado[["AV1 (Prova)", "AV2 (Prova)", "AV3 (Prova)", "PE (Trabalho)"]].mean(axis=1).round(1)
+            
+            def calc_situacao(media):
+                if media >= 7.0: return "🟢 APROVADO"
+                elif media >= 5.0: return "🟡 RECUPERAÇÃO"
+                else: return "🔴 REPROVADO"
+                
+            df_resultado["SITUAÇÃO"] = df_resultado["MÉDIA FINAL"].apply(calc_situacao)
+            
+            st.dataframe(
+                df_resultado[["ALUNO", "MÉDIA FINAL", "SITUAÇÃO"]],
+                hide_index=True,
+                use_container_width=True
+            )
+            
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1: st.button("+ Nova Atividade", use_container_width=True)
+            with col_btn2: st.button("💾 Salvar Diário de Notas", type="primary", use_container_width=True)
