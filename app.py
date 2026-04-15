@@ -10,11 +10,29 @@ st.set_page_config(page_title="Projeto Saber - Gestão Escolar", page_icon="🏫
 
 st.markdown("""
 <style>
-    /* Reset de cores para tema claro escolar */
-    .stApp { background-color: #f4f7f6; color: #1e3d59; }
+    /* FUNDO GERAL CLARO */
+    .stApp { background-color: #f4f7f6; }
+    
+    /* FORÇA TEXTOS A SEREM ESCUROS (Corrigindo o conflito com o Dark Mode) */
+    .stApp p, .stApp span, .stApp label, .stApp div[data-testid="stMarkdownContainer"] {
+        color: #1e3d59 !important;
+    }
+
+    /* TÍTULOS */
     h1, h2, h3, h4, h5 { color: #004d99 !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     
-    /* Estilo dos Cards de Métrica (Dashboard) */
+    /* EXCEÇÃO: TEXTO DOS BOTÕES DEVE SER BRANCO */
+    .stButton > button p, .stButton > button span {
+        color: #ffffff !important;
+    }
+    
+    /* SIDEBAR BRANCA */
+    [data-testid="stSidebar"] {
+        background-color: #ffffff;
+        border-right: 1px solid #ddd;
+    }
+    
+    /* CARDS DO DASHBOARD */
     div[data-testid="metric-container"] {
         background-color: #ffffff;
         border: 1px solid #e0e0e0;
@@ -23,7 +41,7 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     
-    /* Estilo do Diário de Seleção */
+    /* PAINEL DE SELEÇÃO DO DIÁRIO */
     .painel-selecao {
         background-color: #ffffff;
         border-radius: 15px;
@@ -33,16 +51,9 @@ st.markdown("""
         margin-bottom: 20px;
     }
     
-    /* Botões personalizados */
-    .stButton>button {
-        border-radius: 8px;
-        font-weight: bold;
-    }
-    
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background-color: #ffffff;
-        border-right: 1px solid #ddd;
+    /* CORREÇÃO PARA O FUNDO DOS INPUTS FICAREM CLAROS */
+    div[data-baseweb="select"] > div, input, textarea {
+        background-color: #ffffff !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -100,10 +111,15 @@ with st.sidebar:
             fazer_login(user_input, pass_input)
         st.info("💡 **Dica de Teste:**\n\nLogin: `prof456`\nSenha: `456`")
     else:
-        st.success(f"👤 {st.session_state.usuario_logado}")
+        # Banner de Identificação (Estilo verde igual à foto)
+        st.markdown(f"""
+        <div style='background-color: #d4edda; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 1px solid #c3e6cb;'>
+            <span style='color: #155724 !important; font-weight: bold; font-size: 1.1em;'>🧑‍🏫 {st.session_state.usuario_logado}</span>
+        </div>
+        """, unsafe_allow_html=True)
         
         # Menu de Navegação Pedagógica
-        st.markdown("**PEDAGÓGICO**")
+        st.markdown("<span style='color:#888; font-size:0.8em; font-weight:bold;'>PEDAGÓGICO</span>", unsafe_allow_html=True)
         st.button("📖 Diário de Classe", use_container_width=True)
         st.button("🤖 Gerador de Provas", use_container_width=True)
         st.button("📄 Ocorrências", use_container_width=True)
@@ -128,7 +144,6 @@ if st.session_state.usuario_logado is None:
 elif st.session_state.perfil_logado == "professor":
     # --- PAINEL DO PROFESSOR (O CORAÇÃO DO SISTEMA) ---
     
-    # Adicionamos a nova ABA de Inteligência Artificial
     aba_dash, aba_freq, aba_notas, aba_ia = st.tabs(["📊 Dashboard", "📅 Frequência", "📝 Notas", "🤖 Gerador IA (Novo)"])
     
     # ---------------------------------------------------------
@@ -171,13 +186,13 @@ elif st.session_state.perfil_logado == "professor":
         with col_data: st.date_input("Data da Aula:", date.today())
         
         st.markdown("---")
-        st.markdown("<div style='display:flex; justify-content:space-between; padding:0 20px;'><b>ALUNO</b><b>STATUS DE PRESENÇA</b></div>", unsafe_allow_html=True)
-        st.markdown("<hr style='margin:5px 0;'>", unsafe_allow_html=True)
+        st.markdown("<div style='display:flex; justify-content:space-between; padding:0 20px; color:#004d99; font-weight:bold;'><span>ALUNO</span><span>STATUS DE PRESENÇA</span></div>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin:5px 0; border-top: 2px solid #ccc;'>", unsafe_allow_html=True)
         
         for aluno in ALUNOS_MOCK:
             ca, cb = st.columns([3, 2])
             with ca:
-                st.markdown(f"**{aluno}**<br><span style='font-size:0.8em; color:#888;'>ID: {hash(aluno)}</span>", unsafe_allow_html=True)
+                st.markdown(f"<span style='font-weight:bold; color:#1e3d59;'>{aluno}</span><br><span style='font-size:0.8em; color:#888;'>ID: {abs(hash(aluno))}</span>", unsafe_allow_html=True)
             with cb:
                 st.radio("Status", ["P (Presente)", "F (Falta)", "FJ (Justificada)"], horizontal=True, label_visibility="collapsed", key=f"rad_{aluno}")
             st.markdown("<hr style='margin:5px 0; opacity:0.3;'>", unsafe_allow_html=True)
@@ -211,10 +226,10 @@ elif st.session_state.perfil_logado == "professor":
 
         else:
             st.markdown(f"""
-            <div style='background-color:#e6f2ff; padding:15px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;'>
+            <div style='background-color:#e6f2ff; padding:15px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border: 1px solid #b3d9ff;'>
                 <div>
-                    <span style='color:#004d99; font-weight:bold; font-size:0.9em;'>CONTEXTO ATUAL: <span style='background:#004d99; color:#fff; padding:2px 8px; border-radius:10px;'>{st.session_state.ctx_bim}</span></span><br>
-                    <span style='font-size:1.2em;'>👤 <b>{st.session_state.usuario_logado}</b> &nbsp;|&nbsp; 👥 {st.session_state.ctx_turma} &nbsp;|&nbsp; 📄 {st.session_state.ctx_disc}</span>
+                    <span style='color:#004d99 !important; font-weight:bold; font-size:0.9em;'>CONTEXTO ATUAL: <span style='background:#004d99; color:#fff !important; padding:2px 8px; border-radius:10px;'>{st.session_state.ctx_bim}</span></span><br>
+                    <span style='font-size:1.2em; color:#1e3d59 !important;'>👤 <b>{st.session_state.usuario_logado}</b> &nbsp;|&nbsp; 👥 {st.session_state.ctx_turma} &nbsp;|&nbsp; 📄 {st.session_state.ctx_disc}</span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -285,11 +300,9 @@ elif st.session_state.perfil_logado == "professor":
             gerar_prova_btn = st.form_submit_button("🚀 Elaborar Avaliação Inédita com IA", type="primary", use_container_width=True)
 
         if gerar_prova_btn and assunto:
-            # Simulação do processamento de uma LLM (Inteligência Artificial)
             with st.spinner("Conectando ao núcleo de IA... Cruzando dados e elaborando questões inéditas..."):
-                time.sleep(3) # Pausa dramática simulando o tempo de resposta da API
+                time.sleep(3) 
                 
-                # Construção do Mockup da Prova (Placeholder inteligente)
                 texto_prova = f"==========================================================\n"
                 texto_prova += f"ESCOLA PROJETO SABER\n"
                 texto_prova += f"Data: ___/___/2026\n"
@@ -317,13 +330,11 @@ elif st.session_state.perfil_logado == "professor":
                 texto_prova += f"--- FIM DA AVALIAÇÃO ---\n\nGABARITO DO PROFESSOR (OCULTO PARA IMPRESSÃO):\n[Gabarito automático gerado pela IA]"
 
                 st.success("✅ Avaliação elaborada com sucesso! Uma prova única foi forjada.")
-                
                 st.text_area("📄 Pré-Visualização do Documento:", texto_prova, height=400)
                 
                 st.markdown("### Exportar ou Imprimir")
                 col_exp1, col_exp2 = st.columns(2)
                 with col_exp1:
-                    # Botão nativo para baixar em .TXT
                     st.download_button(
                         label="📥 Baixar Documento (.TXT)",
                         data=texto_prova,
@@ -332,5 +343,4 @@ elif st.session_state.perfil_logado == "professor":
                         use_container_width=True
                     )
                 with col_exp2:
-                    # Instrução para salvar em PDF de forma nativa e sem quebrar bibliotecas
                     st.button("🖨️ Imprimir / Salvar PDF (Use Ctrl+P)", use_container_width=True, help="Clique e aperte Ctrl+P (ou Cmd+P no Mac) no seu navegador para exportar como PDF.")
