@@ -51,9 +51,20 @@ st.markdown("""
         margin-bottom: 20px;
     }
     
-    /* CORREÇÃO PARA O FUNDO DOS INPUTS FICAREM CLAROS */
-    div[data-baseweb="select"] > div, input, textarea {
+    /* CORREÇÃO MÁXIMA PARA CAIXAS DE TEXTO E INPUTS FICAREM VISÍVEIS (TINTA INVISÍVEL RESOLVIDA) */
+    div[data-baseweb="select"] > div, 
+    input, 
+    textarea, 
+    div[data-baseweb="base-input"] {
         background-color: #ffffff !important;
+        color: #000000 !important; /* Força o texto digitado a ser PRETO */
+        -webkit-text-fill-color: #000000 !important; /* Proteção extra para navegadores webkit */
+    }
+    
+    /* Ajuste da cor do texto de dica (placeholder) */
+    input::placeholder, textarea::placeholder {
+        color: #888888 !important;
+        -webkit-text-fill-color: #888888 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -105,8 +116,8 @@ with st.sidebar:
     
     if st.session_state.usuario_logado is None:
         st.markdown("### 🔐 Acesso ao Sistema")
-        user_input = st.text_input("Usuário")
-        pass_input = st.text_input("Senha", type="password")
+        user_input = st.text_input("Usuário", placeholder="Digite sua matrícula")
+        pass_input = st.text_input("Senha", type="password", placeholder="Digite sua senha")
         if st.button("Entrar", use_container_width=True, type="primary"):
             fazer_login(user_input, pass_input)
         st.info("💡 **Dica de Teste:**\n\nLogin: `prof456`\nSenha: `456`")
@@ -144,7 +155,7 @@ if st.session_state.usuario_logado is None:
 elif st.session_state.perfil_logado == "professor":
     # --- PAINEL DO PROFESSOR (O CORAÇÃO DO SISTEMA) ---
     
-    aba_dash, aba_freq, aba_notas, aba_ia = st.tabs(["📊 Dashboard", "📅 Frequência", "📝 Notas", "🤖 Gerador IA (Novo)"])
+    aba_dash, aba_freq, aba_notas, aba_ia = st.tabs(["📊 Dashboard", "📅 Frequência", "📝 Notas", "🤖 Gerador IA"])
     
     # ---------------------------------------------------------
     # ABA 1: DASHBOARD (VISÃO GERAL)
@@ -175,23 +186,20 @@ elif st.session_state.perfil_logado == "professor":
             st.markdown("**01/05** - Dia do Trabalho")
             
     # ---------------------------------------------------------
-    # ABA 2: FREQUÊNCIA E DIÁRIO DE AULA (ATUALIZADO V5.0)
+    # ABA 2: FREQUÊNCIA E DIÁRIO DE AULA 
     # ---------------------------------------------------------
     with aba_freq:
         st.markdown("<h2>Registro de Frequência e Conteúdo</h2>", unsafe_allow_html=True)
         st.markdown("<p style='color:#666;'>Preencha os dados da aula e selecione o status de presença para cada aluno.</p>", unsafe_allow_html=True)
         
-        # Bloco Superior: Informações da Aula
         st.markdown("<div style='background-color:#ffffff; padding:20px; border-radius:10px; border: 1px solid #e0e0e0; margin-bottom: 20px;'>", unsafe_allow_html=True)
         col_turma, col_data = st.columns(2)
         with col_turma: st.selectbox("Turma:", ["6º Ano A", "7º Ano B", "8º Ano A"], key="freq_turma")
         with col_data: st.date_input("Data da Aula:", date.today())
         
-        # NOVO CAMPO: Assunto da Aula
-        assunto_aula = st.text_area("📚 Assunto do Dia / Conteúdo Lecionado:", placeholder="Descreva os conteúdos abordados nesta aula. Ex: Resolução de exercícios de frações...", height=100)
+        assunto_aula = st.text_area("📚 Assunto do Dia / Conteúdo Lecionado:", placeholder="Descreva os conteúdos abordados nesta aula...", height=100)
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # Bloco Inferior: Lista de Chamada
         st.markdown("<div style='display:flex; justify-content:space-between; padding:0 20px; color:#004d99; font-weight:bold;'><span>ALUNO</span><span>STATUS DE PRESENÇA</span></div>", unsafe_allow_html=True)
         st.markdown("<hr style='margin:5px 0; border-top: 2px solid #ccc;'>", unsafe_allow_html=True)
         
@@ -204,10 +212,8 @@ elif st.session_state.perfil_logado == "professor":
             st.markdown("<hr style='margin:5px 0; opacity:0.3;'>", unsafe_allow_html=True)
         
         if st.button("💾 Salvar Frequência e Assunto do Dia", type="primary", use_container_width=True):
-            if assunto_aula.strip() == "":
-                st.warning("⚠️ Atenção: Você não preencheu o Assunto da Aula, mas a frequência foi salva.")
-            else:
-                st.success("✅ Frequência e Diário de Conteúdo salvos com sucesso!")
+            if assunto_aula.strip() == "": st.warning("⚠️ Atenção: Você não preencheu o Assunto da Aula, mas a frequência foi salva.")
+            else: st.success("✅ Frequência e Diário de Conteúdo salvos com sucesso!")
 
     # ---------------------------------------------------------
     # ABA 3: NOTAS (DIÁRIO DE CLASSE)
@@ -298,14 +304,10 @@ elif st.session_state.perfil_logado == "professor":
             assunto = st.text_area("📚 Assunto(s) da Avaliação", placeholder="Ex: Equações de 2º Grau, Revolução Francesa, Biologia Celular...")
             
             c_ia1, c_ia2, c_ia3, c_ia4 = st.columns(4)
-            with c_ia1:
-                tipo_quest = st.selectbox("📝 Tipo de Questão", ["Múltipla Escolha (A-E)", "Abertas (Dissertativas)", "Mista (50/50)"])
-            with c_ia2:
-                nivel_dif = st.selectbox("⚙️ Dificuldade", ["Fácil", "Médio", "Difícil"])
-            with c_ia3:
-                qtd_quest = st.number_input("🔢 Quantidade de Questões", min_value=1, max_value=50, value=10)
-            with c_ia4:
-                peso_quest = st.number_input("⚖️ Peso (Pts) por Questão", min_value=0.1, max_value=10.0, value=1.0, step=0.1)
+            with c_ia1: tipo_quest = st.selectbox("📝 Tipo de Questão", ["Múltipla Escolha (A-E)", "Abertas (Dissertativas)", "Mista (50/50)"])
+            with c_ia2: nivel_dif = st.selectbox("⚙️ Dificuldade", ["Fácil", "Médio", "Difícil"])
+            with c_ia3: qtd_quest = st.number_input("🔢 Quantidade de Questões", min_value=1, max_value=50, value=10)
+            with c_ia4: peso_quest = st.number_input("⚖️ Peso (Pts) por Questão", min_value=0.1, max_value=10.0, value=1.0, step=0.1)
                 
             gerar_prova_btn = st.form_submit_button("🚀 Elaborar Avaliação Inédita com IA", type="primary", use_container_width=True)
 
@@ -342,15 +344,6 @@ elif st.session_state.perfil_logado == "professor":
                 st.success("✅ Avaliação elaborada com sucesso! Uma prova única foi forjada.")
                 st.text_area("📄 Pré-Visualização do Documento:", texto_prova, height=400)
                 
-                st.markdown("### Exportar ou Imprimir")
                 col_exp1, col_exp2 = st.columns(2)
-                with col_exp1:
-                    st.download_button(
-                        label="📥 Baixar Documento (.TXT)",
-                        data=texto_prova,
-                        file_name=f"Prova_{assunto.replace(' ', '_')}.txt",
-                        mime="text/plain",
-                        use_container_width=True
-                    )
-                with col_exp2:
-                    st.button("🖨️ Imprimir / Salvar PDF (Use Ctrl+P)", use_container_width=True, help="Clique e aperte Ctrl+P (ou Cmd+P no Mac) no seu navegador para exportar como PDF.")
+                with col_exp1: st.download_button(label="📥 Baixar Documento (.TXT)", data=texto_prova, file_name=f"Prova_{assunto.replace(' ', '_')}.txt", mime="text/plain", use_container_width=True)
+                with col_exp2: st.button("🖨️ Imprimir / Salvar PDF (Use Ctrl+P)", use_container_width=True)
