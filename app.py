@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
+import time
 
 # =============================================================================
 # --- 1. CONFIGURAÇÕES GERAIS E VISUAIS (TEMA CLARO E EDUCACIONAL) ---
@@ -101,10 +102,10 @@ with st.sidebar:
     else:
         st.success(f"👤 {st.session_state.usuario_logado}")
         
-        # Menu de Navegação (Simulando a imagem)
+        # Menu de Navegação Pedagógica
         st.markdown("**PEDAGÓGICO**")
-        st.button("📖 Notas", use_container_width=True)
-        st.button("📅 Frequência", use_container_width=True)
+        st.button("📖 Diário de Classe", use_container_width=True)
+        st.button("🤖 Gerador de Provas", use_container_width=True)
         st.button("📄 Ocorrências", use_container_width=True)
         st.button("🗓️ Calendário", use_container_width=True)
         
@@ -127,8 +128,8 @@ if st.session_state.usuario_logado is None:
 elif st.session_state.perfil_logado == "professor":
     # --- PAINEL DO PROFESSOR (O CORAÇÃO DO SISTEMA) ---
     
-    # Abas Superiores
-    aba_dash, aba_freq, aba_notas = st.tabs(["📊 Dashboard", "📅 Frequência", "📝 Notas"])
+    # Adicionamos a nova ABA de Inteligência Artificial
+    aba_dash, aba_freq, aba_notas, aba_ia = st.tabs(["📊 Dashboard", "📅 Frequência", "📝 Notas", "🤖 Gerador IA (Novo)"])
     
     # ---------------------------------------------------------
     # ABA 1: DASHBOARD (VISÃO GERAL)
@@ -178,7 +179,6 @@ elif st.session_state.perfil_logado == "professor":
             with ca:
                 st.markdown(f"**{aluno}**<br><span style='font-size:0.8em; color:#888;'>ID: {hash(aluno)}</span>", unsafe_allow_html=True)
             with cb:
-                # Botões de rádio horizontais simulando os blocos (P, F, FJ)
                 st.radio("Status", ["P (Presente)", "F (Falta)", "FJ (Justificada)"], horizontal=True, label_visibility="collapsed", key=f"rad_{aluno}")
             st.markdown("<hr style='margin:5px 0; opacity:0.3;'>", unsafe_allow_html=True)
         
@@ -210,7 +210,6 @@ elif st.session_state.perfil_logado == "professor":
                 st.button("Abrir Diário de Notas ➔", disabled=True, use_container_width=True)
 
         else:
-            # DIÁRIO ABERTO (Quadro de Notas)
             st.markdown(f"""
             <div style='background-color:#e6f2ff; padding:15px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;'>
                 <div>
@@ -227,7 +226,6 @@ elif st.session_state.perfil_logado == "professor":
             st.markdown("### Quadro de Médias")
             st.caption("Fórmula de Média: (AV1 + AV2 + AV3 + PE) / 4")
             
-            # Criando DataFrame Editável para simular a planilha de notas da imagem
             df_notas = pd.DataFrame({
                 "ALUNO": ALUNOS_MOCK,
                 "AV1 (Prova)": [10.0, 6.5, 7.5, 9.0, 8.5, 8.5, 7.0],
@@ -236,11 +234,8 @@ elif st.session_state.perfil_logado == "professor":
                 "PE (Trabalho)": [3.0, 3.0, 3.0, 2.0, 3.0, 3.0, 3.0]
             })
             
-            # Editor de dados do Streamlit (Permite digitar igual Excel)
             df_editado = st.data_editor(
-                df_notas,
-                hide_index=True,
-                use_container_width=True,
+                df_notas, hide_index=True, use_container_width=True,
                 column_config={
                     "ALUNO": st.column_config.TextColumn(disabled=True),
                     "AV1 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"),
@@ -250,7 +245,6 @@ elif st.session_state.perfil_logado == "professor":
                 }
             )
             
-            # Cálculo em tempo real da Média Final e Situação
             st.markdown("### Resultado Consolidado")
             df_resultado = df_editado.copy()
             df_resultado["MÉDIA FINAL"] = df_resultado[["AV1 (Prova)", "AV2 (Prova)", "AV3 (Prova)", "PE (Trabalho)"]].mean(axis=1).round(1)
@@ -261,13 +255,82 @@ elif st.session_state.perfil_logado == "professor":
                 else: return "🔴 REPROVADO"
                 
             df_resultado["SITUAÇÃO"] = df_resultado["MÉDIA FINAL"].apply(calc_situacao)
-            
-            st.dataframe(
-                df_resultado[["ALUNO", "MÉDIA FINAL", "SITUAÇÃO"]],
-                hide_index=True,
-                use_container_width=True
-            )
+            st.dataframe(df_resultado[["ALUNO", "MÉDIA FINAL", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
             
             col_btn1, col_btn2 = st.columns(2)
             with col_btn1: st.button("+ Nova Atividade", use_container_width=True)
             with col_btn2: st.button("💾 Salvar Diário de Notas", type="primary", use_container_width=True)
+
+    # ---------------------------------------------------------
+    # ABA 4: GERADOR DE PROVAS COM IA (O NOVO ARSENAL)
+    # ---------------------------------------------------------
+    with aba_ia:
+        st.markdown("<h2>🤖 Fábrica de Avaliações com IA</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#666;'>Gere provas, testes e exercícios inéditos e randomizados em segundos.</p>", unsafe_allow_html=True)
+        
+        with st.form("form_ia_gerador"):
+            st.markdown("#### Configurações da Avaliação")
+            assunto = st.text_area("📚 Assunto(s) da Avaliação", placeholder="Ex: Equações de 2º Grau, Revolução Francesa, Biologia Celular...")
+            
+            c_ia1, c_ia2, c_ia3, c_ia4 = st.columns(4)
+            with c_ia1:
+                tipo_quest = st.selectbox("📝 Tipo de Questão", ["Múltipla Escolha (A-E)", "Abertas (Dissertativas)", "Mista (50/50)"])
+            with c_ia2:
+                nivel_dif = st.selectbox("⚙️ Dificuldade", ["Fácil", "Médio", "Difícil"])
+            with c_ia3:
+                qtd_quest = st.number_input("🔢 Quantidade de Questões", min_value=1, max_value=50, value=10)
+            with c_ia4:
+                peso_quest = st.number_input("⚖️ Peso (Pts) por Questão", min_value=0.1, max_value=10.0, value=1.0, step=0.1)
+                
+            gerar_prova_btn = st.form_submit_button("🚀 Elaborar Avaliação Inédita com IA", type="primary", use_container_width=True)
+
+        if gerar_prova_btn and assunto:
+            # Simulação do processamento de uma LLM (Inteligência Artificial)
+            with st.spinner("Conectando ao núcleo de IA... Cruzando dados e elaborando questões inéditas..."):
+                time.sleep(3) # Pausa dramática simulando o tempo de resposta da API
+                
+                # Construção do Mockup da Prova (Placeholder inteligente)
+                texto_prova = f"==========================================================\n"
+                texto_prova += f"ESCOLA PROJETO SABER\n"
+                texto_prova += f"Data: ___/___/2026\n"
+                texto_prova += f"Professor(a): {st.session_state.usuario_logado}\n"
+                texto_prova += f"Aluno(a): ________________________________________________\n"
+                texto_prova += f"Assunto: {assunto.upper()}\n"
+                texto_prova += f"Nível: {nivel_dif} | Total de Questões: {qtd_quest}\n"
+                texto_prova += f"==========================================================\n\n"
+                
+                for i in range(1, int(qtd_quest) + 1):
+                    texto_prova += f"QUESTÃO {i} (Valor: {peso_quest} pts)\n"
+                    texto_prova += f"[A Inteligência Artificial inseriria aqui um enunciado original e contextualizado sobre {assunto}].\n\n"
+                    
+                    if tipo_quest == "Múltipla Escolha (A-E)" or (tipo_quest == "Mista (50/50)" and i % 2 != 0):
+                        texto_prova += "A) [Alternativa Incorreta Gerada pela IA]\n"
+                        texto_prova += "B) [Alternativa Incorreta Gerada pela IA]\n"
+                        texto_prova += "C) [Alternativa Correta Gerada pela IA]\n"
+                        texto_prova += "D) [Alternativa Incorreta Gerada pela IA]\n"
+                        texto_prova += "E) [Alternativa Incorreta Gerada pela IA]\n\n"
+                    else:
+                        texto_prova += "R: ___________________________________________________________________\n"
+                        texto_prova += "______________________________________________________________________\n"
+                        texto_prova += "______________________________________________________________________\n\n"
+                
+                texto_prova += f"--- FIM DA AVALIAÇÃO ---\n\nGABARITO DO PROFESSOR (OCULTO PARA IMPRESSÃO):\n[Gabarito automático gerado pela IA]"
+
+                st.success("✅ Avaliação elaborada com sucesso! Uma prova única foi forjada.")
+                
+                st.text_area("📄 Pré-Visualização do Documento:", texto_prova, height=400)
+                
+                st.markdown("### Exportar ou Imprimir")
+                col_exp1, col_exp2 = st.columns(2)
+                with col_exp1:
+                    # Botão nativo para baixar em .TXT
+                    st.download_button(
+                        label="📥 Baixar Documento (.TXT)",
+                        data=texto_prova,
+                        file_name=f"Prova_{assunto.replace(' ', '_')}.txt",
+                        mime="text/plain",
+                        use_container_width=True
+                    )
+                with col_exp2:
+                    # Instrução para salvar em PDF de forma nativa e sem quebrar bibliotecas
+                    st.button("🖨️ Imprimir / Salvar PDF (Use Ctrl+P)", use_container_width=True, help="Clique e aperte Ctrl+P (ou Cmd+P no Mac) no seu navegador para exportar como PDF.")
