@@ -197,7 +197,7 @@ elif st.session_state.perfil_logado == "professor":
             st.markdown('<div class="painel-selecao">', unsafe_allow_html=True)
             st.text_input("👤 Professor", st.session_state.usuario_logado, disabled=True)
             sel_turma = st.selectbox("👥 Turma", ["Selecione..."] + lista_turmas)
-            sel_disc = st.selectbox("📄 Disciplina", ["Selecione...", "Língua Portuguesa", "Matemática", "História"])
+            sel_disc = st.selectbox("📄 Disciplina", ["Selecione...", "Língua Portuguesa", "Matemática", "História", "Ciências", "Geografia"])
             sel_bim = st.selectbox("📅 Bimestre", ["Selecione...", "1º Bimestre", "2º Bimestre", "3º Bimestre", "4º Bimestre"])
             st.markdown('</div>', unsafe_allow_html=True)
             
@@ -251,7 +251,7 @@ elif st.session_state.perfil_logado == "professor":
     with aba_ia:
         st.markdown("<h2>🤖 Fábrica de Avaliações com IA</h2>", unsafe_allow_html=True)
         if not ia_configurada:
-            st.error("⚠️ **Sistema Desconectado:** A chave da API do Gemini não foi encontrada.")
+            st.error("⚠️ **Sistema Desconectado:** A chave da API do Gemini não foi encontrada no cofre.")
         else:
             with st.form("form_ia_gerador"):
                 assunto = st.text_area("📚 Assunto(s) da Avaliação", placeholder="Ex: Equações de 2º Grau, Revolução Francesa...")
@@ -263,18 +263,41 @@ elif st.session_state.perfil_logado == "professor":
                 gerar_prova_btn = st.form_submit_button("🚀 Elaborar Avaliação Inédita com IA", type="primary", use_container_width=True)
 
             if gerar_prova_btn and assunto:
-                with st.spinner("Conectando ao núcleo de IA do Gemini... Elaborando prova inédita..."):
+                with st.spinner("Conectando ao núcleo de IA do Gemini... Procurando motor autorizado..."):
                     try:
-                        # A MÁGICA ACONTECE AQUI: Usando o motor 'gemini-pro' universal
-                        modelo = genai.GenerativeModel('gemini-pro')
-                        prompt = f"Você é um professor experiente elaborando uma prova escolar. Assunto: {assunto}. Nível de Dificuldade: {nivel_dif}. Quantidade de Questões: {qtd_quest}. Tipo de Questões: {tipo_quest}. Peso de cada questão: {peso_quest} pontos. Por favor, gere uma avaliação completa e formatada. Inclua um cabeçalho escolar no topo (Escola Projeto Saber, Nome, Data). As questões devem ser desafiadoras e adequadas ao nível solicitado. NÃO coloque o gabarito junto com a prova. Obrigatório: Gere o GABARITO COMPLETO apenas no final do documento, após um divisor de linha, claramente marcado como 'GABARITO DO PROFESSOR'."
-                        resposta = modelo.generate_content(prompt)
-                        texto_prova = resposta.text
-                        st.success("✅ Avaliação forjada com sucesso pela Inteligência Artificial!")
-                        st.text_area("📄 Pré-Visualização do Documento:", texto_prova, height=500)
+                        # O MOTOR DE AUTO-DESCOBERTA
+                        # Ele varre os servidores do Google e puxa a lista exata do que o seu projeto tem permissão para usar
+                        modelos_disponiveis = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                         
-                        col_exp1, col_exp2 = st.columns(2)
-                        with col_exp1: st.download_button(label="📥 Baixar (.TXT)", data=texto_prova, file_name=f"Prova_{assunto.replace(' ', '_')}.txt", mime="text/plain", use_container_width=True)
-                        with col_exp2: st.button("🖨️ Imprimir / Salvar PDF (Ctrl+P)", use_container_width=True)
+                        if not modelos_disponiveis:
+                            st.error("⚠️ Erro Crítico: Sua Chave de API é válida, mas o projeto no Google Cloud não tem permissão para gerar textos. Crie uma chave nova em um projeto diferente no Google AI Studio.")
+                        else:
+                            # Tenta engatar os motores de elite, se falhar, pega o primeiro da lista que o Google autorizar
+                            modelos_preferidos = ['models/gemini-1.5-flash', 'models/gemini-1.5-pro', 'models/gemini-1.0-pro', 'models/gemini-pro']
+                            modelo_escolhido = None
+                            
+                            for pref in modelos_preferidos:
+                                if pref in modelos_disponiveis:
+                                    modelo_escolhido = pref
+                                    break
+                            
+                            if not modelo_escolhido:
+                                modelo_escolhido = modelos_disponiveis[0]
+                                
+                            st.info(f"⚙️ Motor de IA Engajado com Sucesso: `{modelo_escolhido}`")
+                            
+                            modelo = genai.GenerativeModel(modelo_escolhido)
+                            prompt = f"Você é um professor experiente elaborando uma prova escolar. Assunto: {assunto}. Nível de Dificuldade: {nivel_dif}. Quantidade de Questões: {qtd_quest}. Tipo de Questões: {tipo_quest}. Peso de cada questão: {peso_quest} pontos. Por favor, gere uma avaliação completa e formatada. Inclua um cabeçalho escolar no topo (Escola Projeto Saber, Nome, Data). As questões devem ser desafiadoras e adequadas ao nível solicitado. NÃO coloque o gabarito junto com a prova. Obrigatório: Gere o GABARITO COMPLETO apenas no final do documento, após um divisor de linha, claramente marcado como 'GABARITO DO PROFESSOR'."
+                            
+                            resposta = modelo.generate_content(prompt)
+                            texto_prova = resposta.text
+                            
+                            st.success("✅ Avaliação forjada com sucesso pela Inteligência Artificial!")
+                            st.text_area("📄 Pré-Visualização do Documento:", texto_prova, height=500)
+                            
+                            col_exp1, col_exp2 = st.columns(2)
+                            with col_exp1: st.download_button(label="📥 Baixar (.TXT)", data=texto_prova, file_name=f"Prova_{assunto.replace(' ', '_')}.txt", mime="text/plain", use_container_width=True)
+                            with col_exp2: st.button("🖨️ Imprimir / Salvar PDF (Ctrl+P)", use_container_width=True)
+                            
                     except Exception as e:
-                        st.error(f"Erro na conexão com a IA: {e}")
+                        st.error(f"Erro profundo na conexão com a IA: {e}")
