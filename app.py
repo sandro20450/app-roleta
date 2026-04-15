@@ -265,14 +265,11 @@ elif st.session_state.perfil_logado == "professor":
             if gerar_prova_btn and assunto:
                 with st.spinner("Conectando ao núcleo de IA do Gemini... Procurando motor autorizado..."):
                     try:
-                        # O MOTOR DE AUTO-DESCOBERTA
-                        # Ele varre os servidores do Google e puxa a lista exata do que o seu projeto tem permissão para usar
                         modelos_disponiveis = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                         
                         if not modelos_disponiveis:
-                            st.error("⚠️ Erro Crítico: Sua Chave de API é válida, mas o projeto no Google Cloud não tem permissão para gerar textos. Crie uma chave nova em um projeto diferente no Google AI Studio.")
+                            st.error("⚠️ Erro Crítico: Chave sem permissão para texto.")
                         else:
-                            # Tenta engatar os motores de elite, se falhar, pega o primeiro da lista que o Google autorizar
                             modelos_preferidos = ['models/gemini-1.5-flash', 'models/gemini-1.5-pro', 'models/gemini-1.0-pro', 'models/gemini-pro']
                             modelo_escolhido = None
                             
@@ -284,8 +281,6 @@ elif st.session_state.perfil_logado == "professor":
                             if not modelo_escolhido:
                                 modelo_escolhido = modelos_disponiveis[0]
                                 
-                            st.info(f"⚙️ Motor de IA Engajado com Sucesso: `{modelo_escolhido}`")
-                            
                             modelo = genai.GenerativeModel(modelo_escolhido)
                             prompt = f"Você é um professor experiente elaborando uma prova escolar. Assunto: {assunto}. Nível de Dificuldade: {nivel_dif}. Quantidade de Questões: {qtd_quest}. Tipo de Questões: {tipo_quest}. Peso de cada questão: {peso_quest} pontos. Por favor, gere uma avaliação completa e formatada. Inclua um cabeçalho escolar no topo (Escola Projeto Saber, Nome, Data). As questões devem ser desafiadoras e adequadas ao nível solicitado. NÃO coloque o gabarito junto com a prova. Obrigatório: Gere o GABARITO COMPLETO apenas no final do documento, após um divisor de linha, claramente marcado como 'GABARITO DO PROFESSOR'."
                             
@@ -300,4 +295,9 @@ elif st.session_state.perfil_logado == "professor":
                             with col_exp2: st.button("🖨️ Imprimir / Salvar PDF (Ctrl+P)", use_container_width=True)
                             
                     except Exception as e:
-                        st.error(f"Erro profundo na conexão com a IA: {e}")
+                        # O ESCUDO DE TRATAMENTO DE ERRO (V11.0)
+                        erro_str = str(e).lower()
+                        if "429" in erro_str or "quota" in erro_str:
+                            st.warning("🚦 **Servidor Ocupado:** O limite gratuito da Inteligência Artificial foi atingido temporariamente. Por favor, aguarde 1 minuto e aperte o botão novamente.")
+                        else:
+                            st.error(f"⚠️ Ocorreu uma instabilidade na conexão: {e}")
