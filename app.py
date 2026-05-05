@@ -24,6 +24,7 @@ st.markdown("""
     .painel-selecao { background-color: #ffffff; border-radius: 15px; padding: 25px; border-top: 5px solid #004d99; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
     div[data-baseweb="select"] > div, input, textarea, div[data-baseweb="base-input"] { background-color: #ffffff !important; color: #000000 !important; -webkit-text-fill-color: #000000 !important; }
     input::placeholder, textarea::placeholder { color: #888888 !important; -webkit-text-fill-color: #888888 !important; }
+    .aviso-card { background-color: #fff3cd; border-left: 5px solid #ffecb5; padding: 15px; border-radius: 5px; margin-bottom: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -71,6 +72,20 @@ def carregar_alunos(turma):
             return alunos_turma if alunos_turma else ["Nenhum aluno cadastrado nesta turma."]
     except:
         return ["Erro ao carregar alunos"]
+
+# NOVA FUNÇÃO: Busca os dados específicos do aluno logado na aba "Alunos"
+def buscar_dados_aluno(nome_aluno):
+    try:
+        gc = get_gspread_client()
+        if gc:
+            ws = gc.open("Base_SEEA").worksheet("Alunos")
+            records = ws.get_all_records()
+            for r in records:
+                if str(r['nome_aluno']).strip() == nome_aluno.strip():
+                    return r # Retorna os dados (turma, turno, etc.) se encontrar o aluno
+    except Exception as e:
+        return None
+    return None
 
 # =============================================================================
 # --- 3. CONFIGURAÇÃO DA INTELIGÊNCIA ARTIFICIAL (GEMINI) ---
@@ -120,13 +135,22 @@ with st.sidebar:
     else:
         st.markdown(f"""<div style='background-color: #d4edda; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 1px solid #c3e6cb;'><span style='color: #155724 !important; font-weight: bold; font-size: 1.1em;'>👤 {st.session_state.usuario_logado}</span></div>""", unsafe_allow_html=True)
         
+        # Menu adaptado para Professor
         if st.session_state.perfil_logado == "professor":
             st.markdown("<span style='color:#888; font-size:0.8em; font-weight:bold;'>PEDAGÓGICO</span>", unsafe_allow_html=True)
             st.button("📖 Diário de Classe", use_container_width=True)
             st.button("🤖 Gerador de Provas", use_container_width=True)
+            
+        # Menu adaptado para Administração
         elif st.session_state.perfil_logado in ["admin", "diretoria"]:
             st.markdown("<span style='color:#888; font-size:0.8em; font-weight:bold;'>ADMINISTRAÇÃO</span>", unsafe_allow_html=True)
             st.button("⚙️ Painel Geral", use_container_width=True)
+            
+        # NOVO: Menu adaptado para o Aluno / Responsável
+        elif st.session_state.perfil_logado == "aluno":
+            st.markdown("<span style='color:#888; font-size:0.8em; font-weight:bold;'>ÁREA DO ALUNO</span>", unsafe_allow_html=True)
+            st.button("📊 Meu Boletim", use_container_width=True)
+            st.button("📢 Avisos Escolares", use_container_width=True)
             
         st.markdown("---")
         if st.button("🚪 Sair", use_container_width=True): fazer_logout()
@@ -135,6 +159,7 @@ with st.sidebar:
 # --- 6. ÁREA PRINCIPAL (FRONT-END) ---
 # =============================================================================
 
+# Tela Inicial (Deslogado)
 if st.session_state.usuario_logado is None:
     st.markdown("<h1 style='text-align: center;'>Bem-vindo ao Portal SEEA</h1>", unsafe_allow_html=True)
     col1, col2, col3, col4 = st.columns(4)
@@ -143,6 +168,68 @@ if st.session_state.usuario_logado is None:
     with col3: st.warning("📍 **Localização**\n\nVeja como chegar à escola.")
     with col4: st.error("📞 **Contatos**\n\nFale com a secretaria.")
 
+# NOVO: Painel exclusivo do Aluno / Responsável
+elif st.session_state.perfil_logado == "aluno":
+    st.markdown(f"<h1 style='text-align: center;'>🎓 Portal do Aluno</h1>", unsafe_allow_html=True)
+    
+    # Busca as informações do aluno logado na planilha
+    dados_do_aluno = buscar_dados_aluno(st.session_state.usuario_logado)
+    
+    if dados_do_aluno:
+        st.markdown(f"""
+        <div style='background-color:#e6f2ff; padding:15px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border: 1px solid #b3d9ff;'>
+            <div>
+                <span style='font-size:1.2em; color:#1e3d59 !important;'>👤 <b>{st.session_state.usuario_logado}</b></span><br>
+                <span style='color:#004d99 !important; font-weight:bold;'>👥 Turma: {dados_do_aluno.get('turma', 'N/A')} &nbsp;|&nbsp; 🏫 Ensino: {dados_do_aluno.get('ensino', 'N/A')} &nbsp;|&nbsp; ⏰ Turno: {dados_do_aluno.get('turno', 'N/A')}</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.warning("⚠️ Dados da turma não encontrados. Por favor, contacte a secretaria.")
+
+    # Criação das Abas de navegação para o Aluno
+    aba_boletim, aba_avisos = st.tabs(["📊 Boletim de Notas", "📢 Mural de Avisos"])
+    
+    with aba_boletim:
+        st.markdown("### 📝 Desempenho Académico - 2026")
+        st.write("Acompanhe as notas do aluno por disciplina em cada bimestre.")
+        
+        # Tabela simulada de notas (Até conectarmos com o banco de notas oficial)
+        df_boletim = pd.DataFrame({
+            "Disciplina": ["Língua Portuguesa", "Matemática", "História", "Ciências", "Geografia"],
+            "1º Bim": [8.5, 7.0, 9.0, 8.0, 7.5],
+            "2º Bim": [7.5, 6.5, 8.5, 7.5, 8.0],
+            "3º Bim": ["-", "-", "-", "-", "-"],
+            "4º Bim": ["-", "-", "-", "-", "-"],
+            "Média Parcial": [8.0, 6.75, 8.75, 7.75, 7.75],
+            "Situação Parcial": ["🟢 OK", "🟡 ATENÇÃO", "🟢 OK", "🟢 OK", "🟢 OK"]
+        })
+        
+        st.dataframe(df_boletim, hide_index=True, use_container_width=True)
+        st.caption("Legenda: 🟢 OK (Média >= 7.0) | 🟡 ATENÇÃO (Média < 7.0) | 🔴 CRÍTICO (Média < 5.0)")
+
+    with aba_avisos:
+        st.markdown("### 📢 Quadro de Comunicações")
+        st.write("Fique atento aos prazos e comunicados importantes da escola.")
+        
+        # Avisos (Podem ser puxados de uma nova aba na planilha no futuro)
+        st.markdown("""
+        <div class='aviso-card'>
+            <strong>📅 Reunião de Pais e Mestres</strong><br>
+            A nossa próxima reunião de acompanhamento pedagógico será no dia 15 de Junho, às 18h30. Contamos com a sua presença!
+        </div>
+        <div class='aviso-card'>
+            <strong>📝 Avaliações do 2º Bimestre</strong><br>
+            As provas globais terão início na próxima segunda-feira. Por favor, verifiquem o calendário de estudos enviado por e-mail.
+        </div>
+        <div class='aviso-card'>
+            <strong>⚽ Jogos Interescolares</strong><br>
+            As inscrições para os jogos de futsal e voleibol terminam nesta sexta-feira. Procure o professor de Educação Física.
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# Painel da Diretoria (Mantido do código original)
 elif st.session_state.perfil_logado in ["admin", "diretoria"]:
     st.header("👑 Painel da Diretoria")
     st.markdown("Você está conectado como Administrador. O sistema identificou o seu nível de acesso máximo.")
@@ -151,6 +238,7 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
     c2.metric("Inteligência Artificial", "Gemini API", "Online" if ia_configurada else "Offline")
     c3.metric("Status do Servidor", "Estável", "100%")
 
+# Painel do Professor (Mantido do código original)
 elif st.session_state.perfil_logado == "professor":
     aba_dash, aba_freq, aba_notas, aba_ia = st.tabs(["📊 Dashboard", "📅 Frequência", "📝 Notas", "🤖 Gerador IA"])
     
@@ -246,16 +334,12 @@ elif st.session_state.perfil_logado == "professor":
             
             st.button("💾 Salvar Diário de Notas", type="primary", use_container_width=True)
 
-    # ---------------------------------------------------------
-    # ABA 4: GERADOR DE PROVAS COM INTELIGÊNCIA ARTIFICIAL E LEITOR DE ARQUIVOS
-    # ---------------------------------------------------------
     with aba_ia:
         st.markdown("<h2>🤖 Fábrica de Avaliações com IA</h2>", unsafe_allow_html=True)
         if not ia_configurada:
             st.error("⚠️ **Sistema Desconectado:** A chave da API do Gemini não foi encontrada no cofre.")
         else:
             with st.form("form_ia_gerador"):
-                # NOVO: UPLOAD DE ARQUIVOS PARA LEITURA DA IA
                 st.markdown("#### 1. Material de Referência (Opcional, mas recomendado)")
                 arquivo_upload = st.file_uploader("📄 Envie um resumo, texto ou conteúdo base (Apenas PDF ou TXT)", type=["pdf", "txt"])
                 
@@ -275,7 +359,6 @@ elif st.session_state.perfil_logado == "professor":
                 else:
                     with st.spinner("Lendo material e conectando ao núcleo de IA... Elaborando prova..."):
                         try:
-                            # Processamento do arquivo (se houver)
                             texto_extraido = ""
                             if arquivo_upload is not None:
                                 try:
@@ -289,10 +372,7 @@ elif st.session_state.perfil_logado == "professor":
                                     st.error(f"Não foi possível ler o arquivo enviado. Detalhes: {e}")
                                     texto_extraido = ""
 
-                            # O RETORNO DO REI: O motor 2.5 que sabemos que funciona na sua chave!
                             modelo = genai.GenerativeModel('gemini-2.5-flash')
-                            
-                            # Montando a ordem exata para a IA
                             prompt = f"Você é um professor elaborando uma prova. Assunto: {assunto}. Nível: {nivel_dif}. Qtd Questões: {qtd_quest}. Tipo: {tipo_quest}. Peso: {peso_quest} pts/cada.\n"
                             
                             if texto_extraido != "":
@@ -300,7 +380,6 @@ elif st.session_state.perfil_logado == "professor":
                             
                             prompt += "\nFormate a prova de forma limpa. Inclua um cabeçalho escolar (Escola Projeto Saber, Nome, Data). NÃO coloque o gabarito junto com a prova. O GABARITO DEVE FICAR APENAS NO FINAL, isolado por uma linha e marcado como 'GABARITO DO PROFESSOR'."
                             
-                            # Filtros desligados para não dar falso positivo em biologia/história
                             safety_settings = [
                                 {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
                                 {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
@@ -309,8 +388,8 @@ elif st.session_state.perfil_logado == "professor":
                             ]
                             
                             resposta = modelo.generate_content(prompt, safety_settings=safety_settings)
-                            
                             texto_prova = resposta.text
+                            
                             st.success("✅ Avaliação forjada com sucesso pela Inteligência Artificial!")
                             st.text_area("📄 Pré-Visualização do Documento:", texto_prova, height=500)
                             
