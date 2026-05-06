@@ -366,7 +366,6 @@ if st.session_state.usuario_logado is None:
                 
            with c_pix2:
                 st.markdown("##### 2. QR Code")
-                # Cole o link direto da sua imagem hospedada aqui embaixo:
                 meu_link_qr_code = "https://i.ibb.co/VY6vZGQb/qr-pix.jpg"
                 st.image(meu_link_qr_code, width=130, caption="Escanear PIX")
                 
