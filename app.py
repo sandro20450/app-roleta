@@ -136,29 +136,64 @@ def carregar_notas_aluno(nome_aluno):
     except: 
         return pd.DataFrame() 
 
+# DOCUMENTAÇÃO: MOTOR DE UPSERT (ATUALIZAR OU INSERIR)
+# Agora o sistema verifica se a linha do aluno+disciplina+bimestre já existe.
+# Se existir, atualiza. Se não existir, cria. Acabou a duplicação!
 def salvar_notas_bd(turma, disciplina, bimestre, df_resultados):
     try:
         gc = get_gspread_client()
         if gc:
             ws = gc.open("Base_SEEA").worksheet("Notas")
-            novas_linhas = []
+            
+            # Puxa o banco inteiro para o Pandas
+            df_banco = carregar_tabela_completa("Notas")
+            
+            # Se a planilha for nova/vazia, garantimos que tem as colunas certas
+            colunas_padrao = ['turma', 'aluno', 'bimestre', 'disciplina', 'av1', 'av2', 'av3', 'pe', 'media', 'situacao', 'conceito']
+            if df_banco.empty:
+                df_banco = pd.DataFrame(columns=colunas_padrao)
+            
+            # Lógica Inteligente: Atualizar ou Inserir (Upsert)
             for index, row in df_resultados.iterrows():
-                linha = [
-                    turma, 
-                    row["ALUNO"], 
-                    bimestre, 
-                    disciplina, 
-                    str(row.get("AV1 (Prova)", "-")), 
-                    str(row.get("AV2 (Prova)", "-")), 
-                    str(row.get("AV3 (Prova)", "-")), 
-                    str(row.get("PE (Trabalho)", "-")), 
-                    str(row["MÉDIA FINAL"]), 
-                    row["SITUAÇÃO"], 
-                    str(row["CONCEITO"])
-                ]
-                novas_linhas.append(linha)
-            ws.append_rows(novas_linhas, value_input_option="USER_ENTERED")
-            st.cache_data.clear()
+                aluno_atual = str(row["ALUNO"]).strip()
+                
+                # Procura se já existe esta exata combinação no banco
+                mask = (
+                    (df_banco['aluno'].astype(str).str.strip() == aluno_atual) &
+                    (df_banco['disciplina'].astype(str).str.strip() == disciplina.strip()) &
+                    (df_banco['bimestre'].astype(str).str.strip() == bimestre.strip())
+                )
+                
+                # Monta a nova linha de dados deste aluno
+                nova_linha = {
+                    'turma': turma,
+                    'aluno': aluno_atual,
+                    'bimestre': bimestre,
+                    'disciplina': disciplina,
+                    'av1': str(row.get("AV1 (Prova)", "-")),
+                    'av2': str(row.get("AV2 (Prova)", "-")),
+                    'av3': str(row.get("AV3 (Prova)", "-")),
+                    'pe': str(row.get("PE (Trabalho)", "-")),
+                    'media': str(row["MÉDIA FINAL"]),
+                    'situacao': row["SITUAÇÃO"],
+                    'conceito': str(row.get("CONCEITO", "-"))
+                }
+                
+                if df_banco[mask].empty:
+                    # Não existe? Então INSERE (Append)
+                    df_banco = pd.concat([df_banco, pd.DataFrame([nova_linha])], ignore_index=True)
+                else:
+                    # Já existe? Então ATUALIZA (Update) a linha exata
+                    idx = df_banco[mask].index[0]
+                    for col, val in nova_linha.items():
+                        df_banco.at[idx, col] = val
+                        
+            # Grava a tabela limpa e sem duplicatas de volta no Google Sheets
+            dados_lista = [df_banco.columns.values.tolist()] + df_banco.values.tolist()
+            ws.clear()
+            ws.update(values=dados_lista, range_name="A1")
+            
+            st.cache_data.clear() # Limpa a memória
             return True
     except Exception as e:
         st.error(f"Erro ao salvar no banco de dados: {e}")
@@ -548,60 +583,77 @@ elif st.session_state.perfil_logado == "professor":
                 st.rerun()
                 
             st.markdown("### Quadro de Lançamentos")
+            
+            # DOCUMENTAÇÃO: PRÉ-PREENCHIMENTO DO DIÁRIO
+            # O sistema agora lê a planilha e descobre as notas velhas antes de mostrar a tabela.
             lista_alunos_notas = carregar_alunos(st.session_state.ctx_turma)
+            df_notas_banco = carregar_tabela_completa("Notas")
+            df_contexto = pd.DataFrame()
+            if not df_notas_banco.empty:
+                df_contexto = df_notas_banco[
+                    (df_notas_banco['turma'].astype(str).str.strip() == st.session_state.ctx_turma.strip()) &
+                    (df_notas_banco['disciplina'].astype(str).str.strip() == st.session_state.ctx_disc.strip()) &
+                    (df_notas_banco['bimestre'].astype(str).str.strip() == st.session_state.ctx_bim.strip())
+                ]
             
             if not lista_alunos_notas:
-                st.warning("⚠️ Nenhum aluno foi encontrado para esta turma. Por favor, verifique se a planilha 'Alunos' está preenchida corretamente ou clique no botão 'Atualizar Sistema' na barra lateral.")
+                st.warning("⚠️ Nenhum aluno foi encontrado para esta turma.")
             else:
                 if st.session_state.ctx_aval == "Numérico (Notas 0 a 10)":
-                    df_notas = pd.DataFrame({"ALUNO": lista_alunos_notas, "AV1 (Prova)": [0.0]*len(lista_alunos_notas), "AV2 (Prova)": [0.0]*len(lista_alunos_notas), "AV3 (Prova)": [0.0]*len(lista_alunos_notas), "PE (Trabalho)": [0.0]*len(lista_alunos_notas)})
+                    av1_l, av2_l, av3_l, pe_l = [], [], [], []
+                    for aluno in lista_alunos_notas:
+                        aluno_row = df_contexto[df_contexto['aluno'].astype(str).str.strip() == aluno] if not df_contexto.empty else pd.DataFrame()
+                        if not aluno_row.empty:
+                            def safe_float(v):
+                                try: return float(v)
+                                except: return 0.0
+                            av1_l.append(safe_float(aluno_row.iloc[0].get('av1', 0.0)))
+                            av2_l.append(safe_float(aluno_row.iloc[0].get('av2', 0.0)))
+                            av3_l.append(safe_float(aluno_row.iloc[0].get('av3', 0.0)))
+                            pe_l.append(safe_float(aluno_row.iloc[0].get('pe', 0.0)))
+                        else:
+                            av1_l.append(0.0)
+                            av2_l.append(0.0)
+                            av3_l.append(0.0)
+                            pe_l.append(0.0)
+
+                    df_notas = pd.DataFrame({"ALUNO": lista_alunos_notas, "AV1 (Prova)": av1_l, "AV2 (Prova)": av2_l, "AV3 (Prova)": av3_l, "PE (Trabalho)": pe_l})
                     df_editado = st.data_editor(df_notas, hide_index=True, use_container_width=True, column_config={"ALUNO": st.column_config.TextColumn(disabled=True), "AV1 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "AV2 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "AV3 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "PE (Trabalho)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f")})
+                    
                     df_resultado = df_editado.copy()
                     df_resultado["MÉDIA FINAL"] = df_resultado[["AV1 (Prova)", "AV2 (Prova)", "AV3 (Prova)", "PE (Trabalho)"]].mean(axis=1).round(1)
                     df_resultado["SITUAÇÃO"] = df_resultado["MÉDIA FINAL"].apply(lambda m: "🟢 APROVADO" if m >= 7.0 else ("🟡 RECUPERAÇÃO" if m >= 5.0 else "🔴 REPROVADO"))
                     df_resultado["CONCEITO"] = "-" 
                     st.dataframe(df_resultado[["ALUNO", "MÉDIA FINAL", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
+                
                 else:
-                    # DOCUMENTAÇÃO: DIÁRIO CONCEITUAL EXPANDIDO
-                    # Adicionamos opções qualitativas detalhadas (AV1, AV2, AV3, PE e o Final)
-                    st.info("💡 **Dica:** Atribua um conceito qualitativo para cada avaliação (AV) e defina o Conceito Final do bimestre.")
-                    
-                    df_notas = pd.DataFrame({
-                        "ALUNO": lista_alunos_notas,
-                        "AV1 (Prova)": ["-"]*len(lista_alunos_notas),
-                        "AV2 (Prova)": ["-"]*len(lista_alunos_notas),
-                        "AV3 (Prova)": ["-"]*len(lista_alunos_notas),
-                        "PE (Trabalho)": ["-"]*len(lista_alunos_notas),
-                        "CONCEITO FINAL": ["-"]*len(lista_alunos_notas)
-                    })
-                    
+                    av1_c, av2_c, av3_c, pe_c, conc_c = [], [], [], [], []
                     opcoes_conceito = ["-", "Ótimo", "Bom", "Regular"]
-                    
-                    df_editado = st.data_editor(
-                        df_notas, 
-                        hide_index=True, 
-                        use_container_width=True, 
-                        column_config={
-                            "ALUNO": st.column_config.TextColumn(disabled=True),
-                            "AV1 (Prova)": st.column_config.SelectboxColumn("AV1", options=opcoes_conceito, required=True),
-                            "AV2 (Prova)": st.column_config.SelectboxColumn("AV2", options=opcoes_conceito, required=True),
-                            "AV3 (Prova)": st.column_config.SelectboxColumn("AV3", options=opcoes_conceito, required=True),
-                            "PE (Trabalho)": st.column_config.SelectboxColumn("PE", options=opcoes_conceito, required=True),
-                            "CONCEITO FINAL": st.column_config.SelectboxColumn("Conceito Final", options=opcoes_conceito, required=True)
-                        }
-                    )
+                    for aluno in lista_alunos_notas:
+                        aluno_row = df_contexto[df_contexto['aluno'].astype(str).str.strip() == aluno] if not df_contexto.empty else pd.DataFrame()
+                        if not aluno_row.empty:
+                            def safe_conc(v): return v if v in opcoes_conceito else "-"
+                            av1_c.append(safe_conc(aluno_row.iloc[0].get('av1', '-')))
+                            av2_c.append(safe_conc(aluno_row.iloc[0].get('av2', '-')))
+                            av3_c.append(safe_conc(aluno_row.iloc[0].get('av3', '-')))
+                            pe_c.append(safe_conc(aluno_row.iloc[0].get('pe', '-')))
+                            conc_c.append(safe_conc(aluno_row.iloc[0].get('conceito', '-')))
+                        else:
+                            av1_c.append("-"); av2_c.append("-"); av3_c.append("-"); pe_c.append("-"); conc_c.append("-")
+
+                    df_notas = pd.DataFrame({"ALUNO": lista_alunos_notas, "AV1 (Prova)": av1_c, "AV2 (Prova)": av2_c, "AV3 (Prova)": av3_c, "PE (Trabalho)": pe_c, "CONCEITO FINAL": conc_c})
+                    df_editado = st.data_editor(df_notas, hide_index=True, use_container_width=True, column_config={"ALUNO": st.column_config.TextColumn(disabled=True), "AV1 (Prova)": st.column_config.SelectboxColumn("AV1", options=opcoes_conceito, required=True), "AV2 (Prova)": st.column_config.SelectboxColumn("AV2", options=opcoes_conceito, required=True), "AV3 (Prova)": st.column_config.SelectboxColumn("AV3", options=opcoes_conceito, required=True), "PE (Trabalho)": st.column_config.SelectboxColumn("PE", options=opcoes_conceito, required=True), "CONCEITO FINAL": st.column_config.SelectboxColumn("Conceito Final", options=opcoes_conceito, required=True)})
                     
                     df_resultado = df_editado.copy()
                     df_resultado["MÉDIA FINAL"] = "-" 
                     df_resultado["CONCEITO"] = df_resultado["CONCEITO FINAL"]
                     df_resultado["SITUAÇÃO"] = df_resultado["CONCEITO FINAL"].apply(lambda c: "🟢 APROVADO" if c in ["Ótimo", "Bom"] else ("🟡 ATENÇÃO" if c == "Regular" else "⚪ PENDENTE"))
-                    
                     st.markdown("#### Resumo do Lançamento Final")
                     st.dataframe(df_resultado[["ALUNO", "CONCEITO FINAL", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
 
                 if st.button("💾 Salvar Diário de Notas no Banco de Dados", type="primary", use_container_width=True):
-                    with st.spinner("Conectando ao servidor..."):
-                        if salvar_notas_bd(st.session_state.ctx_turma, st.session_state.ctx_disc, st.session_state.ctx_bim, df_resultado): st.success("✅ Diário salvo com sucesso!")
+                    with st.spinner("Sincronizando registros..."):
+                        if salvar_notas_bd(st.session_state.ctx_turma, st.session_state.ctx_disc, st.session_state.ctx_bim, df_resultado): st.success("✅ Diário atualizado com sucesso!")
 
     with aba_ia:
         st.markdown("<h2>🤖 Fábrica de Avaliações com IA</h2>", unsafe_allow_html=True)
