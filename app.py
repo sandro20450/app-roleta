@@ -13,12 +13,9 @@ import io
 # =============================================================================
 st.set_page_config(page_title="SEEA - Gestão Escolar", page_icon="🏫", layout="wide")
 
-# DOCUMENTAÇÃO: Injeção de CSS para alterar a barra superior preta para verde claro
 st.markdown("""
 <style>
-    /* Remove a barra preta do Streamlit e aplica a cor do card Financeiro */
     [data-testid="stHeader"] { background-color: #d4edda !important; }
-    
     .stApp { background-color: #f4f7f6; }
     .stApp p, .stApp span, .stApp label, .stApp div[data-testid="stMarkdownContainer"] { color: #1e3d59 !important; }
     h1, h2, h3, h4, h5 { color: #004d99 !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -28,6 +25,7 @@ st.markdown("""
     .painel-selecao { background-color: #ffffff; border-radius: 15px; padding: 25px; border-top: 5px solid #004d99; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
     div[data-baseweb="select"] > div, input, textarea, div[data-baseweb="base-input"] { background-color: #ffffff !important; color: #000000 !important; -webkit-text-fill-color: #000000 !important; }
     input::placeholder, textarea::placeholder { color: #888888 !important; -webkit-text-fill-color: #888888 !important; }
+    .aviso-card { background-color: #fff3cd; border-left: 5px solid #ffecb5; padding: 15px; border-radius: 5px; margin-bottom: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -104,6 +102,24 @@ def salvar_notas_bd(turma, disciplina, bimestre, df_resultados):
         st.error(f"Erro ao salvar no banco de dados: {e}")
         return False
 
+# DOCUMENTAÇÃO: FUNÇÃO DE SALVAR CHAMADA
+def salvar_frequencia_bd(data_aula, turma, assunto, lista_presenca):
+    try:
+        gc = get_gspread_client()
+        if gc:
+            ws = gc.open("Base_SEEA").worksheet("Frequencia")
+            novas_linhas = []
+            for item in lista_presenca:
+                # Prepara os dados: data, turma, aluno, status, assunto
+                linha = [str(data_aula), turma, item['aluno'], item['status'], assunto]
+                novas_linhas.append(linha)
+            # Envia as presenças de todos os alunos de uma vez
+            ws.append_rows(novas_linhas, value_input_option="USER_ENTERED")
+            return True
+    except Exception as e:
+        st.error(f"Erro ao salvar frequência no banco: {e}")
+        return False
+
 def carregar_notas_aluno(nome_aluno):
     try:
         gc = get_gspread_client()
@@ -118,14 +134,12 @@ def carregar_notas_aluno(nome_aluno):
             return pd.DataFrame()
     except: return pd.DataFrame() 
 
-# DOCUMENTAÇÃO: FUNÇÕES DE GESTÃO ADMIN (Leitura e Escrita Completa)
 def carregar_tabela_completa(nome_aba):
     try:
         gc = get_gspread_client()
         if gc:
             ws = gc.open("Base_SEEA").worksheet(nome_aba)
             records = ws.get_all_records()
-            # Se a aba estiver vazia, cria um DataFrame vazio com colunas base
             if not records:
                 if nome_aba == "Avisos": return pd.DataFrame(columns=["tipo", "aluno", "mensagem", "data"])
                 return pd.DataFrame()
@@ -222,17 +236,13 @@ with st.sidebar:
 if st.session_state.usuario_logado is None:
     st.markdown("<h1 style='text-align: center;'>Bem-vindo ao Portal SEEA</h1>", unsafe_allow_html=True)
     
-    # DOCUMENTAÇÃO: MURAL PÚBLICO (AVISOS GERAIS)
-    # Busca avisos cadastrados como "Geral" para mostrar para todos na entrada
     df_avisos = carregar_tabela_completa("Avisos")
     if not df_avisos.empty and 'tipo' in df_avisos.columns:
-        # Filtra os avisos gerais garantindo que letras maiúsculas/minúsculas não quebrem a lógica
         avisos_gerais = df_avisos[df_avisos['tipo'].astype(str).str.strip().str.upper() == 'GERAL']
         if not avisos_gerais.empty:
             for _, aviso in avisos_gerais.iterrows():
-                # Usa st.warning (Amarelo/Laranja) nativo do Streamlit para alertas globais
                 st.warning(f"📢 **COMUNICADO OFICIAL ({aviso.get('data', '')}):** {aviso.get('mensagem', '')}", icon="🏫")
-            st.markdown("<br>", unsafe_allow_html=True) # Espaçamento
+            st.markdown("<br>", unsafe_allow_html=True)
     
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.info("📝 **Matrículas 2026**\n\nGaranta a vaga do seu filho.")
@@ -274,21 +284,16 @@ elif st.session_state.perfil_logado == "aluno":
         st.markdown("### 📢 Quadro de Comunicações")
         st.write("Fique atento aos prazos e comunicados direcionados a você.")
         
-        # DOCUMENTAÇÃO: MURAL PRIVADO DO ALUNO
         df_avisos = carregar_tabela_completa("Avisos")
         tem_aviso = False
-        
         if not df_avisos.empty and 'tipo' in df_avisos.columns:
-            # 1. Busca avisos Globais para garantir que o aluno veja
             avisos_gerais = df_avisos[df_avisos['tipo'].astype(str).str.strip().str.upper() == 'GERAL']
             for _, aviso in avisos_gerais.iterrows():
                 st.warning(f"📢 **AVISO GERAL ({aviso.get('data', '')}):** {aviso.get('mensagem', '')}")
                 tem_aviso = True
                 
-            # 2. Busca avisos Individuais focados neste exato aluno logado
             avisos_ind = df_avisos[(df_avisos['tipo'].astype(str).str.strip().str.upper() == 'INDIVIDUAL') & (df_avisos['aluno'].astype(str).str.strip() == st.session_state.usuario_logado)]
             for _, aviso in avisos_ind.iterrows():
-                # Usa st.error (Vermelho) para chamar a atenção do pai/aluno
                 st.error(f"📩 **MENSAGEM PRIVADA ({aviso.get('data', '')}):** {aviso.get('mensagem', '')}", icon="⚠️")
                 tem_aviso = True
                 
@@ -299,7 +304,6 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
     st.header("👑 Painel da Diretoria - Centro de Controle")
     st.markdown("Faça adições, edições ou exclusões diretamente nas tabelas abaixo.")
     
-    # Adicionada a nova aba de Gestão de Avisos
     aba_metricas, aba_usuarios, aba_alunos, aba_avisos_admin = st.tabs(["📊 Visão Geral", "🔐 Gestão de Logins", "🎓 Gestão de Alunos", "📣 Gestão de Avisos"])
     
     with aba_metricas:
@@ -324,14 +328,14 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
             if st.button("💾 Sincronizar Alunos", type="primary", use_container_width=True):
                 if sincronizar_aba_completa("Alunos", df_alunos_editado): st.success("✅ Atualizado com sucesso!")
                 
-    # DOCUMENTAÇÃO: PAINEL DE GESTÃO DE AVISOS PARA O ADMIN
     with aba_avisos_admin:
         st.markdown("### 📣 Central de Mensagens e Alertas")
-        st.info("💡 **Como usar:** Na coluna 'tipo', escreva `Geral` (para todos verem) ou `Individual` (para um aluno específico). Na coluna 'aluno', digite o nome completo do aluno ou `Todos`.")
+        st.info("💡 **Como usar:** Na coluna 'tipo', escreva `Geral` ou `Individual`. Na coluna 'aluno', digite o nome do aluno ou `Todos`.")
         
         df_avisos_admin = carregar_tabela_completa("Avisos")
         
-        # Configurando a tabela para ser fácil de preencher pelo Admin
+        # DOCUMENTAÇÃO: CORREÇÃO DO BUG DA DATA
+        # Trocámos DateColumn por TextColumn para evitar "crash" de compatibilidade com células vazias/texto do Excel.
         df_avisos_editado = st.data_editor(
             df_avisos_admin, 
             use_container_width=True, 
@@ -341,7 +345,7 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
                 "tipo": st.column_config.SelectboxColumn("Tipo de Aviso", options=["Geral", "Individual"], required=True),
                 "aluno": st.column_config.TextColumn("Aluno Alvo (ou Todos)", required=True),
                 "mensagem": st.column_config.TextColumn("Mensagem / Aviso", required=True),
-                "data": st.column_config.DateColumn("Data de Publicação", format="DD/MM/YYYY")
+                "data": st.column_config.TextColumn("Data de Publicação (DD/MM/AAAA)") 
             }
         )
         if st.button("💾 Publicar / Sincronizar Avisos", type="primary", use_container_width=True):
@@ -368,7 +372,7 @@ elif st.session_state.perfil_logado == "professor":
         
         lista_turmas = carregar_turmas()
         with col_turma: selecao_turma = st.selectbox("Turma:", lista_turmas, key="freq_turma")
-        with col_data: st.date_input("Data da Aula:", date.today())
+        with col_data: data_aula = st.date_input("Data da Aula:", date.today())
         
         assunto_aula = st.text_area("📚 Assunto do Dia / Conteúdo Lecionado:", placeholder="Descreva os conteúdos abordados nesta aula...", height=100)
         st.markdown("</div>", unsafe_allow_html=True)
@@ -377,14 +381,26 @@ elif st.session_state.perfil_logado == "professor":
             st.markdown("<div style='display:flex; justify-content:space-between; padding:0 20px; color:#004d99; font-weight:bold;'><span>ALUNO</span><span>STATUS DE PRESENÇA</span></div><hr style='margin:5px 0; border-top: 2px solid #ccc;'>", unsafe_allow_html=True)
             
             lista_alunos = carregar_alunos(selecao_turma)
+            
+            # Matriz temporária para segurar os status marcados pelo professor
+            lista_presenca = []
+            
             for aluno in lista_alunos:
                 ca, cb = st.columns([3, 2])
                 with ca: st.markdown(f"<span style='font-weight:bold; color:#1e3d59;'>{aluno}</span>", unsafe_allow_html=True)
-                with cb: st.radio("Status", ["P", "F", "FJ"], horizontal=True, label_visibility="collapsed", key=f"rad_{aluno}")
+                with cb: 
+                    status_aluno = st.radio("Status", ["P", "F", "FJ"], horizontal=True, label_visibility="collapsed", key=f"rad_{aluno}")
+                    lista_presenca.append({"aluno": aluno, "status": status_aluno})
                 st.markdown("<hr style='margin:5px 0; opacity:0.3;'>", unsafe_allow_html=True)
             
-            if st.button("💾 Salvar Frequência", type="primary", use_container_width=True):
-                st.success("✅ Função de salvar será ligada ao banco de dados no futuro.")
+            # Botão de envio que envoca a nossa nova função de Base de Dados
+            if st.button("💾 Salvar Chamada Escolar", type="primary", use_container_width=True):
+                if assunto_aula.strip() == "":
+                    st.warning("⚠️ O assunto da aula não pode estar em branco.")
+                else:
+                    with st.spinner("Registrando as presenças no sistema..."):
+                        if salvar_frequencia_bd(data_aula, selecao_turma, assunto_aula, lista_presenca):
+                            st.success(f"✅ Frequência do dia {data_aula.strftime('%d/%m/%Y')} registrada e salva com sucesso!")
         else:
             st.info("Selecione uma turma para carregar a lista de alunos.")
 
