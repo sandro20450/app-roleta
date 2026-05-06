@@ -102,7 +102,6 @@ def salvar_notas_bd(turma, disciplina, bimestre, df_resultados):
         st.error(f"Erro ao salvar no banco de dados: {e}")
         return False
 
-# DOCUMENTAÇÃO: FUNÇÃO DE SALVAR CHAMADA
 def salvar_frequencia_bd(data_aula, turma, assunto, lista_presenca):
     try:
         gc = get_gspread_client()
@@ -110,10 +109,8 @@ def salvar_frequencia_bd(data_aula, turma, assunto, lista_presenca):
             ws = gc.open("Base_SEEA").worksheet("Frequencia")
             novas_linhas = []
             for item in lista_presenca:
-                # Prepara os dados: data, turma, aluno, status, assunto
                 linha = [str(data_aula), turma, item['aluno'], item['status'], assunto]
                 novas_linhas.append(linha)
-            # Envia as presenças de todos os alunos de uma vez
             ws.append_rows(novas_linhas, value_input_option="USER_ENTERED")
             return True
     except Exception as e:
@@ -306,11 +303,23 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
     
     aba_metricas, aba_usuarios, aba_alunos, aba_avisos_admin = st.tabs(["📊 Visão Geral", "🔐 Gestão de Logins", "🎓 Gestão de Alunos", "📣 Gestão de Avisos"])
     
+    # DOCUMENTAÇÃO: DASHBOARD ADMIN ENRIQUECIDO
+    # As métricas globais foram transferidas para a diretoria, que é quem precisa ver os números totais da escola.
     with aba_metricas:
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Banco de Dados", "Google Sheets", "Conectado")
-        c2.metric("Inteligência Artificial", "Gemini API", "Online" if ia_configurada else "Offline")
-        c3.metric("Segurança", "Ativa", "100%")
+        st.markdown("### 📊 Estatísticas Globais da Escola")
+        c1, c2, c3, c4, c5 = st.columns(5)
+        c1.metric("Alunos Matriculados", "620", "Total Ativo")
+        c2.metric("Frequência Média", "94%", "Mensal")
+        c3.metric("Presentes", "584", "Hoje")
+        c4.metric("Ausentes", "36", "Faltas")
+        c5.metric("Média Escolar", "8.2", "Geral")
+
+        st.markdown("---")
+        st.markdown("### ⚙️ Status do Sistema")
+        c6, c7, c8 = st.columns(3)
+        c6.metric("Banco de Dados", "Google Sheets", "Conectado")
+        c7.metric("Inteligência Artificial", "Gemini API", "Online" if ia_configurada else "Offline")
+        c8.metric("Segurança", "Ativa", "100%")
         
     with aba_usuarios:
         st.markdown("### 🔐 Tabela de Usuários")
@@ -331,11 +340,7 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
     with aba_avisos_admin:
         st.markdown("### 📣 Central de Mensagens e Alertas")
         st.info("💡 **Como usar:** Na coluna 'tipo', escreva `Geral` ou `Individual`. Na coluna 'aluno', digite o nome do aluno ou `Todos`.")
-        
         df_avisos_admin = carregar_tabela_completa("Avisos")
-        
-        # DOCUMENTAÇÃO: CORREÇÃO DO BUG DA DATA
-        # Trocámos DateColumn por TextColumn para evitar "crash" de compatibilidade com células vazias/texto do Excel.
         df_avisos_editado = st.data_editor(
             df_avisos_admin, 
             use_container_width=True, 
@@ -356,14 +361,20 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
 elif st.session_state.perfil_logado == "professor":
     aba_dash, aba_freq, aba_notas, aba_ia = st.tabs(["📊 Dashboard", "📅 Frequência", "📝 Notas", "🤖 Gerador IA"])
     
+    # DOCUMENTAÇÃO: DASHBOARD DO PROFESSOR REFORMULADO
+    # Removemos os dados globais e adicionamos métricas focadas no dia a dia do professor usando o st.metric nativo.
     with aba_dash:
-        st.markdown("<h2>Visão Geral</h2>", unsafe_allow_html=True)
-        c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("Alunos Ativos", "620", "Total")
-        c2.metric("Presentes", "584", "Hoje")
-        c3.metric("Ausentes", "36", "Faltas")
-        c4.metric("Notas Diário", "28/28", "Progresso")
-        c5.metric("Frequência Média", "94%", "Mensal")
+        st.markdown("<h2>Meu Desempenho Pedagógico</h2>", unsafe_allow_html=True)
+        st.info("👋 Olá! Bem-vindo ao seu painel. Aqui está um resumo da sua área de atuação.")
+        
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Minhas Turmas", "4", "Alocadas")
+        c2.metric("Diários Preenchidos", "12", "Este Mês")
+        c3.metric("Alunos em Alerta", "3", "Em Recuperação")
+        c4.metric("Provas IA Geradas", "5", "Materiais Prontos")
+        
+        st.markdown("<br><hr>", unsafe_allow_html=True)
+        st.write("📌 Utilize as abas acima para registrar frequência, lançar notas ou utilizar o nosso gerador de provas com Inteligência Artificial.")
             
     with aba_freq:
         st.markdown("<h2>Registro de Frequência e Conteúdo</h2>", unsafe_allow_html=True)
@@ -381,8 +392,6 @@ elif st.session_state.perfil_logado == "professor":
             st.markdown("<div style='display:flex; justify-content:space-between; padding:0 20px; color:#004d99; font-weight:bold;'><span>ALUNO</span><span>STATUS DE PRESENÇA</span></div><hr style='margin:5px 0; border-top: 2px solid #ccc;'>", unsafe_allow_html=True)
             
             lista_alunos = carregar_alunos(selecao_turma)
-            
-            # Matriz temporária para segurar os status marcados pelo professor
             lista_presenca = []
             
             for aluno in lista_alunos:
@@ -393,7 +402,6 @@ elif st.session_state.perfil_logado == "professor":
                     lista_presenca.append({"aluno": aluno, "status": status_aluno})
                 st.markdown("<hr style='margin:5px 0; opacity:0.3;'>", unsafe_allow_html=True)
             
-            # Botão de envio que envoca a nossa nova função de Base de Dados
             if st.button("💾 Salvar Chamada Escolar", type="primary", use_container_width=True):
                 if assunto_aula.strip() == "":
                     st.warning("⚠️ O assunto da aula não pode estar em branco.")
