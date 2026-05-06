@@ -303,16 +303,50 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
     
     aba_metricas, aba_usuarios, aba_alunos, aba_avisos_admin = st.tabs(["📊 Visão Geral", "🔐 Gestão de Logins", "🎓 Gestão de Alunos", "📣 Gestão de Avisos"])
     
-    # DOCUMENTAÇÃO: DASHBOARD ADMIN ENRIQUECIDO
-    # As métricas globais foram transferidas para a diretoria, que é quem precisa ver os números totais da escola.
     with aba_metricas:
         st.markdown("### 📊 Estatísticas Globais da Escola")
+        
+        # DOCUMENTAÇÃO: CÁLCULO DINÂMICO DE MÉTRICAS (FIM DOS DADOS FALSOS)
+        # 1. Busca os alunos
+        df_alunos_calc = carregar_tabela_completa("Alunos")
+        total_alunos = len(df_alunos_calc) if not df_alunos_calc.empty else 0
+        
+        # 2. Busca e calcula a média geral da escola
+        df_notas_calc = carregar_tabela_completa("Notas")
+        media_geral = 0.0
+        if not df_notas_calc.empty and 'media' in df_notas_calc.columns:
+            # Pega as médias, transforma em números (ignora traços "-") e calcula a média global
+            notas_validas = pd.to_numeric(df_notas_calc['media'], errors='coerce').dropna()
+            if not notas_validas.empty:
+                media_geral = round(notas_validas.mean(), 1)
+                
+        # 3. Busca e calcula as faltas e presenças
+        df_freq_calc = carregar_tabela_completa("Frequencia")
+        hoje_str = date.today().strftime("%Y-%m-%d")
+        presentes_hoje = 0
+        ausentes_hoje = 0
+        freq_media_pct = 0
+        
+        if not df_freq_calc.empty and 'status' in df_freq_calc.columns:
+            # Cálculo de Porcentagem de Frequência Geral
+            total_registros = len(df_freq_calc)
+            total_presencas = len(df_freq_calc[df_freq_calc['status'].astype(str).str.upper() == 'P'])
+            if total_registros > 0:
+                freq_media_pct = round((total_presencas / total_registros) * 100)
+                
+            # Cálculo das presenças apenas do dia de Hoje
+            if 'data' in df_freq_calc.columns:
+                df_hoje = df_freq_calc[df_freq_calc['data'].astype(str) == hoje_str]
+                presentes_hoje = len(df_hoje[df_hoje['status'].astype(str).str.upper() == 'P'])
+                ausentes_hoje = len(df_hoje[df_hoje['status'].astype(str).str.upper() == 'F'])
+
         c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("Alunos Matriculados", "620", "Total Ativo")
-        c2.metric("Frequência Média", "94%", "Mensal")
-        c3.metric("Presentes", "584", "Hoje")
-        c4.metric("Ausentes", "36", "Faltas")
-        c5.metric("Média Escolar", "8.2", "Geral")
+        # Exibe os dados que foram calculados nas variáveis acima
+        c1.metric("Alunos Matriculados", str(total_alunos), "Total Ativo")
+        c2.metric("Frequência Média", f"{freq_media_pct}%", "Global")
+        c3.metric("Presentes", str(presentes_hoje), "Hoje")
+        c4.metric("Ausentes", str(ausentes_hoje), "Hoje")
+        c5.metric("Média Escolar", str(media_geral), "Geral")
 
         st.markdown("---")
         st.markdown("### ⚙️ Status do Sistema")
@@ -361,8 +395,6 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
 elif st.session_state.perfil_logado == "professor":
     aba_dash, aba_freq, aba_notas, aba_ia = st.tabs(["📊 Dashboard", "📅 Frequência", "📝 Notas", "🤖 Gerador IA"])
     
-    # DOCUMENTAÇÃO: DASHBOARD DO PROFESSOR REFORMULADO
-    # Removemos os dados globais e adicionamos métricas focadas no dia a dia do professor usando o st.metric nativo.
     with aba_dash:
         st.markdown("<h2>Meu Desempenho Pedagógico</h2>", unsafe_allow_html=True)
         st.info("👋 Olá! Bem-vindo ao seu painel. Aqui está um resumo da sua área de atuação.")
