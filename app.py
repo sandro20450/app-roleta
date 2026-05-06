@@ -136,9 +136,6 @@ def carregar_notas_aluno(nome_aluno):
     except: 
         return pd.DataFrame() 
 
-# DOCUMENTAÇÃO: SALVAMENTO DETALHADO DAS NOTAS
-# O robô agora procura as notas individuais. Se o diário for Numérico, ele encontra e salva.
-# Se o diário for Conceitual, ele não as encontra e salva com "-" automaticamente (row.get).
 def salvar_notas_bd(turma, disciplina, bimestre, df_resultados):
     try:
         gc = get_gspread_client()
@@ -151,17 +148,17 @@ def salvar_notas_bd(turma, disciplina, bimestre, df_resultados):
                     row["ALUNO"], 
                     bimestre, 
                     disciplina, 
-                    str(row.get("AV1 (Prova)", "-")), # Extrai AV1 ou traço
-                    str(row.get("AV2 (Prova)", "-")), # Extrai AV2 ou traço
-                    str(row.get("AV3 (Prova)", "-")), # Extrai AV3 ou traço
-                    str(row.get("PE (Trabalho)", "-")), # Extrai PE ou traço
+                    str(row.get("AV1 (Prova)", "-")), 
+                    str(row.get("AV2 (Prova)", "-")), 
+                    str(row.get("AV3 (Prova)", "-")), 
+                    str(row.get("PE (Trabalho)", "-")), 
                     str(row["MÉDIA FINAL"]), 
                     row["SITUAÇÃO"], 
                     str(row["CONCEITO"])
                 ]
                 novas_linhas.append(linha)
             ws.append_rows(novas_linhas, value_input_option="USER_ENTERED")
-            st.cache_data.clear() # Limpa a memória
+            st.cache_data.clear()
             return True
     except Exception as e:
         st.error(f"Erro ao salvar no banco de dados: {e}")
@@ -325,16 +322,12 @@ elif st.session_state.perfil_logado == "aluno":
         st.markdown("### 📝 Desempenho Acadêmico")
         df_notas_aluno = carregar_notas_aluno(st.session_state.usuario_logado)
         
-        # DOCUMENTAÇÃO: BOLETIM COM NOTAS INDIVIDUAIS
-        # Agora o portal verifica se as colunas av1, av2, av3 e pe existem no banco de dados e mostra-as ao aluno.
         if not df_notas_aluno.empty:
             colunas_esperadas = ['disciplina', 'bimestre', 'av1', 'av2', 'av3', 'pe', 'media', 'conceito', 'situacao']
             colunas_presentes = [col for col in colunas_esperadas if col in df_notas_aluno.columns]
             
             if len(colunas_presentes) > 0:
                 df_boletim_visual = df_notas_aluno[colunas_presentes]
-                
-                # Traduzindo as colunas do banco de dados para os nomes bonitos da tela
                 renomear_para_tela = {
                     'disciplina': 'Disciplina',
                     'bimestre': 'Bimestre',
@@ -569,12 +562,42 @@ elif st.session_state.perfil_logado == "professor":
                     df_resultado["CONCEITO"] = "-" 
                     st.dataframe(df_resultado[["ALUNO", "MÉDIA FINAL", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
                 else:
-                    df_notas = pd.DataFrame({"ALUNO": lista_alunos_notas, "CONCEITO": ["-"]*len(lista_alunos_notas)})
-                    df_editado = st.data_editor(df_notas, hide_index=True, use_container_width=True, column_config={"ALUNO": st.column_config.TextColumn(disabled=True), "CONCEITO": st.column_config.SelectboxColumn("Conceito Qualitativo", options=["-", "Ótimo", "Bom", "Regular"], required=True)})
+                    # DOCUMENTAÇÃO: DIÁRIO CONCEITUAL EXPANDIDO
+                    # Adicionamos opções qualitativas detalhadas (AV1, AV2, AV3, PE e o Final)
+                    st.info("💡 **Dica:** Atribua um conceito qualitativo para cada avaliação (AV) e defina o Conceito Final do bimestre.")
+                    
+                    df_notas = pd.DataFrame({
+                        "ALUNO": lista_alunos_notas,
+                        "AV1 (Prova)": ["-"]*len(lista_alunos_notas),
+                        "AV2 (Prova)": ["-"]*len(lista_alunos_notas),
+                        "AV3 (Prova)": ["-"]*len(lista_alunos_notas),
+                        "PE (Trabalho)": ["-"]*len(lista_alunos_notas),
+                        "CONCEITO FINAL": ["-"]*len(lista_alunos_notas)
+                    })
+                    
+                    opcoes_conceito = ["-", "Ótimo", "Bom", "Regular"]
+                    
+                    df_editado = st.data_editor(
+                        df_notas, 
+                        hide_index=True, 
+                        use_container_width=True, 
+                        column_config={
+                            "ALUNO": st.column_config.TextColumn(disabled=True),
+                            "AV1 (Prova)": st.column_config.SelectboxColumn("AV1", options=opcoes_conceito, required=True),
+                            "AV2 (Prova)": st.column_config.SelectboxColumn("AV2", options=opcoes_conceito, required=True),
+                            "AV3 (Prova)": st.column_config.SelectboxColumn("AV3", options=opcoes_conceito, required=True),
+                            "PE (Trabalho)": st.column_config.SelectboxColumn("PE", options=opcoes_conceito, required=True),
+                            "CONCEITO FINAL": st.column_config.SelectboxColumn("Conceito Final", options=opcoes_conceito, required=True)
+                        }
+                    )
+                    
                     df_resultado = df_editado.copy()
                     df_resultado["MÉDIA FINAL"] = "-" 
-                    df_resultado["SITUAÇÃO"] = df_resultado["CONCEITO"].apply(lambda c: "🟢 APROVADO" if c in ["Ótimo", "Bom"] else ("🟡 ATENÇÃO" if c == "Regular" else "⚪ PENDENTE"))
-                    st.dataframe(df_resultado[["ALUNO", "CONCEITO", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
+                    df_resultado["CONCEITO"] = df_resultado["CONCEITO FINAL"]
+                    df_resultado["SITUAÇÃO"] = df_resultado["CONCEITO FINAL"].apply(lambda c: "🟢 APROVADO" if c in ["Ótimo", "Bom"] else ("🟡 ATENÇÃO" if c == "Regular" else "⚪ PENDENTE"))
+                    
+                    st.markdown("#### Resumo do Lançamento Final")
+                    st.dataframe(df_resultado[["ALUNO", "CONCEITO FINAL", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
 
                 if st.button("💾 Salvar Diário de Notas no Banco de Dados", type="primary", use_container_width=True):
                     with st.spinner("Conectando ao servidor..."):
