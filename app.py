@@ -13,31 +13,22 @@ import io
 # =============================================================================
 st.set_page_config(page_title="SEEA - Gestão Escolar", page_icon="🏫", layout="wide")
 
-# DOCUMENTAÇÃO: MODO WHITE-LABEL EXTREMO (BLINDAGEM CLOUD)
-# Comandos agressivos usando seletores "Coringa" (*= e >) para vencer as injeções do Streamlit Cloud
+# DOCUMENTAÇÃO: MODO WHITE-LABEL (PRECISÃO CIRÚRGICA)
+# Removemos a regra que destruía tudo. Agora miramos apenas nos botões da direita.
 st.markdown("""
 <style>
-    /* 1. ANULAÇÃO DO CABEÇALHO (TOPO DIREITO) */
-    /* Mantém o fundo verde no Header */
-    header[data-testid="stHeader"] { background-color: #d4edda !important; }
-    /* Destrói (oculta) todos os botões e menus injetados DENTRO do header */
-    header[data-testid="stHeader"] > div { display: none !important; }
-    [data-testid="stToolbar"] { display: none !important; visibility: hidden !important; }
+    /* Oculta os botões do canto superior direito (Share, GitHub, Menu de opções) */
     [data-testid="stHeaderActionElements"] { display: none !important; }
+    [data-testid="stToolbar"] { display: none !important; }
     #MainMenu { display: none !important; }
-
-    /* 2. ANULAÇÃO DA MARCA D'ÁGUA CLOUD (CANTO INFERIOR DIREITO) */
-    /* O asterisco *= procura e anula qualquer classe que contenha essas palavras */
-    [class*="viewerBadge"] { display: none !important; visibility: hidden !important; opacity: 0 !important; }
-    [class*="ViewerBadge"] { display: none !important; }
-    iframe[title*="badge"] { display: none !important; }
     
-    /* 3. LIMPEZA DO RODAPÉ (FOOTER) */
+    /* Limpeza do rodapé */
     footer { display: none !important; visibility: hidden !important; }
 
-    /* =========================================================
-       ESTILOS PADRÕES DO NOSSO APLICATIVO SEEA
-       ========================================================= */
+    /* Mantém a cor verde claro na barra superior */
+    [data-testid="stHeader"] { background-color: #d4edda !important; }
+    
+    /* Estilos Gerais do App */
     .stApp { background-color: #f4f7f6; }
     .stApp p, .stApp span, .stApp label, .stApp div[data-testid="stMarkdownContainer"] { color: #1e3d59 !important; }
     h1, h2, h3, h4, h5 { color: #004d99 !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
