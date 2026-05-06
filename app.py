@@ -136,7 +136,6 @@ def carregar_notas_aluno(nome_aluno):
     except: 
         return pd.DataFrame() 
 
-# DOCUMENTAÇÃO: MOTOR DE UPSERT OTIMIZADO PARA 4 UNIDADES
 def salvar_notas_bd(turma, disciplina, df_resultados):
     try:
         gc = get_gspread_client()
@@ -144,7 +143,6 @@ def salvar_notas_bd(turma, disciplina, df_resultados):
             ws = gc.open("Base_SEEA").worksheet("Notas")
             df_banco = carregar_tabela_completa("Notas")
             
-            # Nova estrutura de colunas do Google Sheets
             colunas_padrao = ['turma', 'aluno', 'disciplina', 'unidade_1', 'unidade_2', 'unidade_3', 'unidade_4', 'media_final', 'situacao']
             if df_banco.empty:
                 df_banco = pd.DataFrame(columns=colunas_padrao)
@@ -152,7 +150,6 @@ def salvar_notas_bd(turma, disciplina, df_resultados):
             for index, row in df_resultados.iterrows():
                 aluno_atual = str(row["ALUNO"]).strip()
                 
-                # Procura o Aluno e a Disciplina exata no banco de dados
                 mask = (
                     (df_banco['aluno'].astype(str).str.strip() == aluno_atual) &
                     (df_banco['disciplina'].astype(str).str.strip() == disciplina.strip())
@@ -345,8 +342,6 @@ elif st.session_state.perfil_logado == "aluno":
         st.markdown("### 📝 Desempenho Acadêmico")
         df_notas_aluno = carregar_notas_aluno(st.session_state.usuario_logado)
         
-        # DOCUMENTAÇÃO: NOVO BOLETIM TRADICIONAL
-        # Agora o boletim lê as 4 colunas de unidades que estão no banco de dados.
         if not df_notas_aluno.empty:
             colunas_esperadas = ['disciplina', 'unidade_1', 'unidade_2', 'unidade_3', 'unidade_4', 'media_final', 'situacao']
             colunas_presentes = [col for col in colunas_esperadas if col in df_notas_aluno.columns]
@@ -421,8 +416,10 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
             if total_registros > 0:
                 freq_media_pct = round((total_presencas / total_registros) * 100)
                 
+            # DOCUMENTAÇÃO: CORREÇÃO DO ERRO NAMEERROR
+            # Substituímos a variável incorreta para que o filtro funcione com a tabela principal corretamente
             if 'data' in df_freq_calc.columns:
-                df_hoje = df_freq_calc[df_hoje['data'].astype(str) == hoje_str]
+                df_hoje = df_freq_calc[df_freq_calc['data'].astype(str) == hoje_str]
                 presentes_hoje = len(df_hoje[df_hoje['status'].astype(str).str.upper() == 'P'])
                 ausentes_hoje = len(df_hoje[df_hoje['status'].astype(str).str.upper() == 'F'])
 
@@ -544,8 +541,6 @@ elif st.session_state.perfil_logado == "professor":
             with c_sel1: sel_turma = st.selectbox("👥 Turma", ["Selecione..."] + lista_turmas)
             with c_sel2: sel_disc = st.selectbox("📄 Disciplina", lista_disciplinas)
             
-            # DOCUMENTAÇÃO: REMOÇÃO DO SELETOR DE BIMESTRE
-            # O professor agora escolhe apenas a Turma, Disciplina e o Método de Avaliação.
             sel_aval = st.selectbox("⚖️ Sistema de Avaliação", ["Selecione...", "Numérico (Notas 0 a 10)", "Conceitual (Ótimo, Bom, Regular)"])
             
             st.markdown('</div>', unsafe_allow_html=True)
@@ -578,7 +573,6 @@ elif st.session_state.perfil_logado == "professor":
             lista_alunos_notas = carregar_alunos(st.session_state.ctx_turma)
             df_notas_banco = carregar_tabela_completa("Notas")
             
-            # Carrega o histórico desta turma e disciplina específica
             df_contexto = pd.DataFrame()
             if not df_notas_banco.empty:
                 df_contexto = df_notas_banco[
@@ -589,8 +583,6 @@ elif st.session_state.perfil_logado == "professor":
             if not lista_alunos_notas:
                 st.warning("⚠️ Nenhum aluno foi encontrado para esta turma.")
             else:
-                # DOCUMENTAÇÃO: DIÁRIO ANUAL POR UNIDADES
-                # A tabela agora carrega as 4 unidades de uma vez para o professor preencher ao longo do ano.
                 if st.session_state.ctx_aval == "Numérico (Notas 0 a 10)":
                     u1_l, u2_l, u3_l, u4_l = [], [], [], []
                     for aluno in lista_alunos_notas:
@@ -611,11 +603,9 @@ elif st.session_state.perfil_logado == "professor":
                     
                     df_resultado = df_editado.copy()
                     
-                    # Calcula a Média com base na soma das notas dividida por 4.
                     df_resultado["MÉDIA FINAL"] = df_resultado[["I Unidade", "II Unidade", "III Unidade", "IV Unidade"]].sum(axis=1) / 4
                     df_resultado["MÉDIA FINAL"] = df_resultado["MÉDIA FINAL"].round(1)
                     
-                    # Define a situação provisória
                     df_resultado["SITUAÇÃO"] = df_resultado["MÉDIA FINAL"].apply(lambda m: "🟢 APROVADO" if m >= 7.0 else ("🟡 EM ANDAMENTO/RECUPERAÇÃO" if m > 0.0 else "⚪ PENDENTE"))
                     
                     st.dataframe(df_resultado[["ALUNO", "MÉDIA FINAL", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
@@ -640,7 +630,6 @@ elif st.session_state.perfil_logado == "professor":
                     df_resultado = df_editado.copy()
                     df_resultado["MÉDIA FINAL"] = "-" 
                     
-                    # No método conceitual, a situação é definida pela última unidade preenchida
                     def calc_situacao(row):
                         ultimo_conc = row["IV Unidade"] if row["IV Unidade"] != "-" else (row["III Unidade"] if row["III Unidade"] != "-" else (row["II Unidade"] if row["II Unidade"] != "-" else row["I Unidade"]))
                         return "🟢 APROVADO" if ultimo_conc in ["Ótimo", "Bom"] else ("🟡 ATENÇÃO" if ultimo_conc == "Regular" else "⚪ PENDENTE")
