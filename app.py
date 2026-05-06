@@ -57,7 +57,7 @@ def carregar_turmas():
         if gc:
             ws = gc.open("Base_SEEA").worksheet("Alunos")
             records = ws.get_all_records()
-            turmas = list(set([str(r['turma']) for r in records if str(r['turma']).strip() != ""]))
+            turmas = list(set([str(r.get('turma', '')) for r in records if str(r.get('turma', '')).strip() != ""]))
             return sorted(turmas) if turmas else ["Selecione..."]
     except:
         return ["Selecione..."]
@@ -68,7 +68,7 @@ def carregar_alunos(turma):
         if gc:
             ws = gc.open("Base_SEEA").worksheet("Alunos")
             records = ws.get_all_records()
-            alunos_turma = [str(r['nome_aluno']) for r in records if str(r['turma']) == turma]
+            alunos_turma = [str(r.get('nome_aluno', '')) for r in records if str(r.get('turma', '')) == turma]
             return alunos_turma if alunos_turma else ["Nenhum aluno cadastrado nesta turma."]
     except:
         return ["Erro ao carregar alunos"]
@@ -80,7 +80,7 @@ def buscar_dados_aluno(nome_aluno):
             ws = gc.open("Base_SEEA").worksheet("Alunos")
             records = ws.get_all_records()
             for r in records:
-                if str(r['nome_aluno']).strip() == nome_aluno.strip():
+                if str(r.get('nome_aluno', '')).strip() == nome_aluno.strip():
                     return r 
     except Exception as e:
         return None
@@ -111,14 +111,30 @@ def salvar_notas_bd(turma, disciplina, bimestre, df_resultados):
         st.error(f"Erro ao salvar no banco de dados: {e}")
         return False
 
+# DOCUMENTAÇÃO: BLINDAGEM DE DADOS NA CARGA DE NOTAS
 def carregar_notas_aluno(nome_aluno):
     try:
         gc = get_gspread_client()
         if gc:
             ws = gc.open("Base_SEEA").worksheet("Notas")
             records = ws.get_all_records()
-            notas_do_aluno = [r for r in records if str(r['aluno']).strip() == nome_aluno.strip()]
-            return pd.DataFrame(notas_do_aluno)
+            
+            if not records:
+                return pd.DataFrame()
+                
+            # Transforma os registros puros em um DataFrame do Pandas
+            df = pd.DataFrame(records)
+            
+            # BLINDAGEM: Converte todos os nomes de colunas para minúsculas e remove espaços vazios.
+            # Isso evita que um "Conceito " com maiúscula e espaço na planilha quebre o aplicativo.
+            df.columns = df.columns.astype(str).str.strip().str.lower()
+            
+            # Verifica com segurança se a coluna 'aluno' existe antes de tentar filtrar
+            if 'aluno' in df.columns:
+                df_filtrado = df[df['aluno'].astype(str).str.strip() == nome_aluno.strip()]
+                return df_filtrado
+            else:
+                return pd.DataFrame()
     except Exception as e:
         return pd.DataFrame() 
 
@@ -225,9 +241,26 @@ elif st.session_state.perfil_logado == "aluno":
         df_notas_aluno = carregar_notas_aluno(st.session_state.usuario_logado)
         
         if not df_notas_aluno.empty:
-            df_boletim_visual = df_notas_aluno[['disciplina', 'bimestre', 'media', 'conceito', 'situacao']]
-            df_boletim_visual.columns = ['Disciplina', 'Bimestre', 'Média Final', 'Conceito', 'Situação']
-            st.dataframe(df_boletim_visual, hide_index=True, use_container_width=True)
+            # BLINDAGEM DE EXIBIÇÃO: Verifica quais colunas existem e extrai de forma segura
+            colunas_esperadas = ['disciplina', 'bimestre', 'media', 'conceito', 'situacao']
+            colunas_presentes = [col for col in colunas_esperadas if col in df_notas_aluno.columns]
+            
+            if len(colunas_presentes) > 0:
+                df_boletim_visual = df_notas_aluno[colunas_presentes]
+                
+                # Renomeia as colunas de forma elegante para o usuário ler
+                renomear_para_tela = {
+                    'disciplina': 'Disciplina',
+                    'bimestre': 'Bimestre',
+                    'media': 'Média Final',
+                    'conceito': 'Conceito',
+                    'situacao': 'Situação'
+                }
+                df_boletim_visual = df_boletim_visual.rename(columns=renomear_para_tela)
+                
+                st.dataframe(df_boletim_visual, hide_index=True, use_container_width=True)
+            else:
+                st.warning("⚠️ Os cabeçalhos da planilha 'Notas' não estão padronizados. Por favor, verifique se existem as colunas 'disciplina', 'bimestre', etc.")
         else:
             st.info("📌 O boletim está vazio. Os professores ainda não lançaram notas neste período.")
 
@@ -307,9 +340,6 @@ elif st.session_state.perfil_logado == "professor":
             
             c_sel3, c_sel4 = st.columns(2)
             with c_sel3: sel_bim = st.selectbox("📅 Bimestre/Unidade", ["Selecione...", "1º Bimestre", "2º Bimestre", "3º Bimestre", "4º Bimestre"])
-            
-            # DOCUMENTAÇÃO: ESCOLHA DO SISTEMA DE AVALIAÇÃO
-            # O professor decide aqui se vai lançar notas numéricas ou conceitos.
             with c_sel4: sel_aval = st.selectbox("⚖️ Sistema de Avaliação", ["Selecione...", "Numérico (Notas 0 a 10)", "Conceitual (Ótimo, Bom, Regular)"])
             
             st.markdown('</div>', unsafe_allow_html=True)
@@ -325,7 +355,6 @@ elif st.session_state.perfil_logado == "professor":
             else: st.button("Abrir Diário de Lançamento ➔", disabled=True, use_container_width=True)
 
         else:
-            # Cabeçalho do Diário Aberto
             st.markdown(f"""
             <div style='background-color:#e6f2ff; padding:15px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border: 1px solid #b3d9ff;'>
                 <div>
@@ -342,7 +371,6 @@ elif st.session_state.perfil_logado == "professor":
             st.markdown("### Quadro de Lançamentos")
             lista_alunos_notas = carregar_alunos(st.session_state.ctx_turma)
             
-            # DOCUMENTAÇÃO: TABELAS DINÂMICAS BASEADAS NA ESCOLHA DO PROFESSOR
             if st.session_state.ctx_aval == "Numérico (Notas 0 a 10)":
                 st.info("💡 **Dica:** Lance as notas decimais. O sistema calculará a média e a situação automaticamente.")
                 df_notas = pd.DataFrame({
@@ -367,12 +395,11 @@ elif st.session_state.perfil_logado == "professor":
                 df_resultado = df_editado.copy()
                 df_resultado["MÉDIA FINAL"] = df_resultado[["AV1 (Prova)", "AV2 (Prova)", "AV3 (Prova)", "PE (Trabalho)"]].mean(axis=1).round(1)
                 df_resultado["SITUAÇÃO"] = df_resultado["MÉDIA FINAL"].apply(lambda m: "🟢 APROVADO" if m >= 7.0 else ("🟡 RECUPERAÇÃO" if m >= 5.0 else "🔴 REPROVADO"))
-                df_resultado["CONCEITO"] = "-" # Bloqueia o conceito no banco de dados
+                df_resultado["CONCEITO"] = "-" 
                 
                 st.dataframe(df_resultado[["ALUNO", "MÉDIA FINAL", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
                 
             else:
-                # Cenário 2: Sistema Conceitual (Educação Infantil / Avaliação Qualitativa)
                 st.info("💡 **Dica:** Escolha o conceito qualitativo para cada aluno. As médias numéricas foram desativadas.")
                 df_notas = pd.DataFrame({
                     "ALUNO": lista_alunos_notas,
@@ -390,13 +417,11 @@ elif st.session_state.perfil_logado == "professor":
                 )
                 
                 df_resultado = df_editado.copy()
-                df_resultado["MÉDIA FINAL"] = "-" # Bloqueia a média numérica no banco de dados
-                # Define a situação baseada na palavra do conceito
+                df_resultado["MÉDIA FINAL"] = "-" 
                 df_resultado["SITUAÇÃO"] = df_resultado["CONCEITO"].apply(lambda c: "🟢 APROVADO" if c in ["Ótimo", "Bom"] else ("🟡 ATENÇÃO" if c == "Regular" else "⚪ PENDENTE"))
                 
                 st.dataframe(df_resultado[["ALUNO", "CONCEITO", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
 
-            # Botão de salvar universal (funciona para os dois modos)
             if st.button("💾 Salvar Diário de Notas no Banco de Dados", type="primary", use_container_width=True):
                 with st.spinner("Conectando ao servidor e enviando as notas..."):
                     sucesso = salvar_notas_bd(st.session_state.ctx_turma, st.session_state.ctx_disc, st.session_state.ctx_bim, df_resultado)
