@@ -18,14 +18,29 @@ st.markdown("""
     /* Mantém a cor verde claro na barra superior */
     [data-testid="stHeader"] { background-color: #d4edda !important; }
     
-    /* DOCUMENTAÇÃO: AJUSTE DE CONTRASTE DOS ÍCONES DAS TABELAS */
-    /* Garante que os ícones do menu interativo flutuante (Download, Busca, Tela Cheia) fiquem brancos */
+    /* Camuflagem dos botões da nuvem */
+    [data-testid="stHeaderActionElements"] * {
+        color: #d4edda !important;
+        fill: #d4edda !important;
+        background-color: transparent !important;
+    }
+    
+    /* Garante que o botão de Menu Sanduíche (Esquerda) continue preto e visível */
+    [data-testid="collapsedControl"] * {
+        color: #000000 !important;
+        fill: #000000 !important;
+    }
+    
+    /* Ajuste de contraste dos ícones nas tabelas (Mural e Diário) */
     [data-testid="stElementToolbar"] button svg, 
     [data-testid="stElementToolbar"] button {
         color: #ffffff !important;
         fill: #ffffff !important;
         stroke: #ffffff !important;
     }
+    
+    /* Limpeza do rodapé */
+    footer { display: none !important; visibility: hidden !important; }
     
     /* Ajuste de cor da Sidebar (Menu Lateral) */
     [data-testid="stSidebar"] { background-color: #e8eaed !important; border-right: 1px solid #cccccc; }
@@ -55,53 +70,95 @@ def get_gspread_client():
         return gspread.authorize(creds)
     return None
 
-def carregar_usuarios():
+# DOCUMENTAÇÃO: MOTOR DE LEITURA BLINDADO
+# Substituímos get_all_records (que crasha com colunas vazias) por get_all_values (lê tudo bruto e formata com segurança)
+def carregar_tabela_completa(nome_aba):
     try:
         gc = get_gspread_client()
         if gc:
-            ws = gc.open("Base_SEEA").worksheet("Usuarios")
-            records = ws.get_all_records()
+            ws = gc.open("Base_SEEA").worksheet(nome_aba)
+            dados = ws.get_all_values()
+            
+            if not dados:
+                if nome_aba == "Avisos": return pd.DataFrame(columns=["tipo", "aluno", "mensagem", "data"])
+                return pd.DataFrame()
+            if len(dados) == 1:
+                return pd.DataFrame(columns=dados[0])
+                
+            df = pd.DataFrame(dados[1:], columns=dados[0])
+            return df
+    except Exception as e:
+        return pd.DataFrame()
+
+def carregar_usuarios():
+    try:
+        df = carregar_tabela_completa("Usuarios")
+        if not df.empty and 'usuario' in df.columns and 'senha' in df.columns:
             usuarios = {}
-            for r in records:
-                usuarios[str(r['usuario'])] = { "senha": str(r['senha']), "perfil": str(r['perfil']).lower().strip(), "nome": str(r['nome']) }
+            for _, row in df.iterrows():
+                # Ignora linhas totalmente vazias
+                if str(row.get('usuario', '')).strip() != "":
+                    usuarios[str(row['usuario']).strip()] = { 
+                        "senha": str(row.get('senha', '')).strip(), 
+                        "perfil": str(row.get('perfil', '')).lower().strip(), 
+                        "nome": str(row.get('nome', '')).strip() 
+                    }
             return usuarios
+        return {}
     except Exception as e:
         return {}
 
 def carregar_turmas():
     try:
-        gc = get_gspread_client()
-        if gc:
-            ws = gc.open("Base_SEEA").worksheet("Alunos")
-            records = ws.get_all_records()
-            turmas = list(set([str(r.get('turma', '')) for r in records if str(r.get('turma', '')).strip() != ""]))
+        df = carregar_tabela_completa("Alunos")
+        if not df.empty and 'turma' in df.columns:
+            # Extrai nomes de turmas removendo espaços falsos no final e eliminando vazios
+            turmas = df['turma'].astype(str).str.strip().unique().tolist()
+            turmas = [t for t in turmas if t != ""]
             return sorted(turmas) if turmas else ["Selecione..."]
+        return ["Selecione..."]
     except:
         return ["Selecione..."]
 
 def carregar_alunos(turma):
     try:
-        gc = get_gspread_client()
-        if gc:
-            ws = gc.open("Base_SEEA").worksheet("Alunos")
-            records = ws.get_all_records()
-            alunos_turma = [str(r.get('nome_aluno', '')) for r in records if str(r.get('turma', '')) == turma]
-            return alunos_turma if alunos_turma else ["Nenhum aluno cadastrado nesta turma."]
-    except:
-        return ["Erro ao carregar alunos"]
+        df = carregar_tabela_completa("Alunos")
+        if not df.empty and 'turma' in df.columns and 'nome_aluno' in df.columns:
+            # Limpa a turma recebida e a coluna de turmas para comparação exata (Sanitização)
+            turma_limpa = str(turma).strip()
+            df_filtrado = df[df['turma'].astype(str).str.strip() == turma_limpa]
+            
+            # Puxa os nomes dos alunos, removendo espaços e itens vazios
+            alunos = df_filtrado['nome_aluno'].astype(str).str.strip().tolist()
+            alunos = [a for a in alunos if a != ""]
+            
+            return alunos if alunos else ["Nenhum aluno cadastrado nesta turma."]
+        return ["Tabela de alunos vazia ou mal formatada."]
+    except Exception as e:
+        # Se der erro, mostra exatamente o porquê na tabela para facilitar manutenção
+        return [f"Erro interno do sistema: {str(e)}"]
 
 def buscar_dados_aluno(nome_aluno):
     try:
-        gc = get_gspread_client()
-        if gc:
-            ws = gc.open("Base_SEEA").worksheet("Alunos")
-            records = ws.get_all_records()
-            for r in records:
-                if str(r.get('nome_aluno', '')).strip() == nome_aluno.strip():
-                    return r 
+        df = carregar_tabela_completa("Alunos")
+        if not df.empty and 'nome_aluno' in df.columns:
+            aluno_row = df[df['nome_aluno'].astype(str).str.strip() == str(nome_aluno).strip()]
+            if not aluno_row.empty:
+                return aluno_row.iloc[0].to_dict()
     except Exception as e:
         return None
     return None
+
+def carregar_notas_aluno(nome_aluno):
+    try:
+        df = carregar_tabela_completa("Notas")
+        if not df.empty:
+            df.columns = df.columns.astype(str).str.strip().str.lower()
+            if 'aluno' in df.columns:
+                return df[df['aluno'].astype(str).str.strip() == str(nome_aluno).strip()]
+        return pd.DataFrame()
+    except: 
+        return pd.DataFrame() 
 
 def salvar_notas_bd(turma, disciplina, bimestre, df_resultados):
     try:
@@ -132,33 +189,6 @@ def salvar_frequencia_bd(data_aula, turma, assunto, lista_presenca):
     except Exception as e:
         st.error(f"Erro ao salvar frequência no banco: {e}")
         return False
-
-def carregar_notas_aluno(nome_aluno):
-    try:
-        gc = get_gspread_client()
-        if gc:
-            ws = gc.open("Base_SEEA").worksheet("Notas")
-            records = ws.get_all_records()
-            if not records: return pd.DataFrame()
-            df = pd.DataFrame(records)
-            df.columns = df.columns.astype(str).str.strip().str.lower()
-            if 'aluno' in df.columns:
-                return df[df['aluno'].astype(str).str.strip() == nome_aluno.strip()]
-            return pd.DataFrame()
-    except: return pd.DataFrame() 
-
-def carregar_tabela_completa(nome_aba):
-    try:
-        gc = get_gspread_client()
-        if gc:
-            ws = gc.open("Base_SEEA").worksheet(nome_aba)
-            records = ws.get_all_records()
-            if not records:
-                if nome_aba == "Avisos": return pd.DataFrame(columns=["tipo", "aluno", "mensagem", "data"])
-                return pd.DataFrame()
-            return pd.DataFrame(records)
-    except Exception as e:
-        return pd.DataFrame()
 
 def sincronizar_aba_completa(nome_aba, df_editado):
     try:
