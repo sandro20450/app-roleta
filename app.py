@@ -13,14 +13,20 @@ import io
 # =============================================================================
 st.set_page_config(page_title="SEEA - Gestão Escolar", page_icon="🏫", layout="wide")
 
-# DOCUMENTAÇÃO: MODO PROFISSIONAL (WHITE-LABEL)
-# Aqui escondemos as ferramentas de desenvolvedor e o rodapé padrão do Streamlit
+# DOCUMENTAÇÃO: MODO WHITE-LABEL EXTREMO
+# Estes comandos CSS são agressivos para esconder qualquer rastro do Streamlit
 st.markdown("""
 <style>
-    /* Oculta os botões do canto superior direito (Share, GitHub, Menu) */
-    [data-testid="stToolbar"] { visibility: hidden !important; }
+    /* Oculta as ferramentas padrão do canto superior direito */
     [data-testid="stHeaderActionElements"] { display: none !important; }
-    #MainMenu { visibility: hidden !important; }
+    
+    /* Oculta o botão de Deploy genérico */
+    .stDeployButton { display: none !important; }
+    
+    /* Oculta a marca d'água e o avatar do Streamlit Cloud no canto inferior direito */
+    [class^="viewerBadge_container"] { display: none !important; }
+    [class^="styles_viewerBadge"] { display: none !important; }
+    #viewerBadge_container__1JC33 { display: none !important; }
     
     /* Oculta o rodapé 'Made with Streamlit' */
     footer { visibility: hidden !important; }
@@ -36,6 +42,7 @@ st.markdown("""
     [data-testid="stSidebar"] { background-color: #ffffff; border-right: 1px solid #ddd; }
     div[data-testid="metric-container"] { background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     .painel-selecao { background-color: #ffffff; border-radius: 15px; padding: 25px; border-top: 5px solid #004d99; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .painel-login { background-color: #ffffff; border-radius: 15px; padding: 30px; border-top: 5px solid #004d99; box-shadow: 0 4px 10px rgba(0,0,0,0.15); margin-bottom: 20px; }
     div[data-baseweb="select"] > div, input, textarea, div[data-baseweb="base-input"] { background-color: #ffffff !important; color: #000000 !important; -webkit-text-fill-color: #000000 !important; }
     input::placeholder, textarea::placeholder { color: #888888 !important; -webkit-text-fill-color: #888888 !important; }
     .aviso-card { background-color: #fff3cd; border-left: 5px solid #ffecb5; padding: 15px; border-radius: 5px; margin-bottom: 10px; }
@@ -205,21 +212,17 @@ def fazer_logout():
 # =============================================================================
 # --- 5. MENU LATERAL (SIDEBAR) ---
 # =============================================================================
-with st.sidebar:
-    st.markdown("<h2 style='text-align:center;'>🌎 SEEA</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; font-size:0.8em; color:#888;'>Sistema de Gestão Escolar</p>", unsafe_allow_html=True)
-    st.markdown("---")
-    
-    if st.session_state.usuario_logado is None:
-        st.markdown("### 🔐 Acesso ao Sistema")
-        user_input = st.text_input("Usuário", placeholder="Digite seu usuário")
-        pass_input = st.text_input("Senha", type="password", placeholder="Digite sua senha")
-        if st.button("Entrar", use_container_width=True, type="primary"):
-            fazer_login(user_input, pass_input)
-            
-        with st.expander("❓ Esqueci minha senha"):
-            st.info("Para recuperar o seu acesso, por favor entre em contato com a Secretaria da Escola.\n\n📞 WhatsApp: (81) 99999-9999\n📧 E-mail: admin@seea.com.br")
-    else:
+# A barra lateral só deve aparecer se alguém estiver logado!
+if st.session_state.usuario_logado is None:
+    # DOCUMENTAÇÃO: OCULTAR SIDEBAR COMPLETAMENTE
+    # Se não há login, desligamos o botão de menu (hamburger) no telemóvel para um UX perfeito
+    st.markdown("""<style>[data-testid="collapsedControl"] { display: none !important; }</style>""", unsafe_allow_html=True)
+else:
+    with st.sidebar:
+        st.markdown("<h2 style='text-align:center;'>🌎 SEEA</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:center; font-size:0.8em; color:#888;'>Sistema de Gestão Escolar</p>", unsafe_allow_html=True)
+        st.markdown("---")
+        
         st.markdown(f"""<div style='background-color: #d4edda; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 1px solid #c3e6cb;'><span style='color: #155724 !important; font-weight: bold; font-size: 1.1em;'>👤 {st.session_state.usuario_logado}</span></div>""", unsafe_allow_html=True)
         
         if st.session_state.perfil_logado == "professor":
@@ -243,9 +246,11 @@ with st.sidebar:
 # --- 6. ÁREA PRINCIPAL (FRONT-END) ---
 # =============================================================================
 
+# DOCUMENTAÇÃO: NOVA TELA DE LOGIN CENTRAL
 if st.session_state.usuario_logado is None:
-    st.markdown("<h1 style='text-align: center;'>Bem-vindo ao Portal SEEA</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; margin-bottom: 30px;'>Bem-vindo ao Portal SEEA</h1>", unsafe_allow_html=True)
     
+    # Exibir Avisos Gerais para quem chega no site
     df_avisos = carregar_tabela_completa("Avisos")
     if not df_avisos.empty and 'tipo' in df_avisos.columns:
         avisos_gerais = df_avisos[df_avisos['tipo'].astype(str).str.strip().str.upper() == 'GERAL']
@@ -254,11 +259,29 @@ if st.session_state.usuario_logado is None:
                 st.warning(f"📢 **COMUNICADO OFICIAL ({aviso.get('data', '')}):** {aviso.get('mensagem', '')}", icon="🏫")
             st.markdown("<br>", unsafe_allow_html=True)
     
-    col1, col2, col3, col4 = st.columns(4)
-    with col1: st.info("📝 **Matrículas 2026**\n\nGaranta a vaga do seu filho.")
-    with col2: st.success("💰 **Financeiro**\n\nAcesse boletos e pagamentos.")
-    with col3: st.warning("📍 **Localização**\n\nVeja como chegar à escola.")
-    with col4: st.error("📞 **Contatos**\n\nFale com a secretaria.")
+    # Dividindo a tela principal para o Login ficar em destaque absoluto
+    col_login, col_info = st.columns([1, 1.5])
+    
+    with col_login:
+        st.markdown('<div class="painel-login">', unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align:center;'>🔐 Acesso ao Painel</h3>", unsafe_allow_html=True)
+        user_input = st.text_input("Usuário", placeholder="Digite seu usuário")
+        pass_input = st.text_input("Senha", type="password", placeholder="Digite sua senha")
+        
+        if st.button("Entrar no Sistema", use_container_width=True, type="primary"):
+            fazer_login(user_input, pass_input)
+            
+        with st.expander("❓ Esqueci minha senha"):
+            st.info("Para recuperar o seu acesso, fale com a Secretaria.\n\n📞 (81) 99999-9999\n📧 admin@seea.com.br")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with col_info:
+        st.markdown("### 📌 Informações Úteis")
+        c_info1, c_info2 = st.columns(2)
+        with c_info1: st.success("💰 **Financeiro**\n\nAcesse boletos e pagamentos de mensalidades de forma prática.")
+        with c_info2: st.warning("📍 **Localização**\n\nVeja como chegar à escola e horários de funcionamento.")
+        st.error("📞 **Contatos Gerais**\n\nSecretaria: (81) 99999-9999\nDiretoria: diretoria@seea.com.br")
+
 
 elif st.session_state.perfil_logado == "aluno":
     st.markdown(f"<h1 style='text-align: center;'>🎓 Portal do Aluno</h1>", unsafe_allow_html=True)
