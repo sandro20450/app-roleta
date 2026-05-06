@@ -13,9 +13,22 @@ import io
 # =============================================================================
 st.set_page_config(page_title="SEEA - Gestão Escolar", page_icon="🏫", layout="wide")
 
+# DOCUMENTAÇÃO: MODO PROFISSIONAL (WHITE-LABEL)
+# Aqui escondemos as ferramentas de desenvolvedor e o rodapé padrão do Streamlit
 st.markdown("""
 <style>
+    /* Oculta os botões do canto superior direito (Share, GitHub, Menu) */
+    [data-testid="stToolbar"] { visibility: hidden !important; }
+    [data-testid="stHeaderActionElements"] { display: none !important; }
+    #MainMenu { visibility: hidden !important; }
+    
+    /* Oculta o rodapé 'Made with Streamlit' */
+    footer { visibility: hidden !important; }
+
+    /* Mantém a cor verde claro na barra superior */
     [data-testid="stHeader"] { background-color: #d4edda !important; }
+    
+    /* Estilos Gerais do App */
     .stApp { background-color: #f4f7f6; }
     .stApp p, .stApp span, .stApp label, .stApp div[data-testid="stMarkdownContainer"] { color: #1e3d59 !important; }
     h1, h2, h3, h4, h5 { color: #004d99 !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -306,21 +319,16 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
     with aba_metricas:
         st.markdown("### 📊 Estatísticas Globais da Escola")
         
-        # DOCUMENTAÇÃO: CÁLCULO DINÂMICO DE MÉTRICAS (FIM DOS DADOS FALSOS)
-        # 1. Busca os alunos
         df_alunos_calc = carregar_tabela_completa("Alunos")
         total_alunos = len(df_alunos_calc) if not df_alunos_calc.empty else 0
         
-        # 2. Busca e calcula a média geral da escola
         df_notas_calc = carregar_tabela_completa("Notas")
         media_geral = 0.0
         if not df_notas_calc.empty and 'media' in df_notas_calc.columns:
-            # Pega as médias, transforma em números (ignora traços "-") e calcula a média global
             notas_validas = pd.to_numeric(df_notas_calc['media'], errors='coerce').dropna()
             if not notas_validas.empty:
                 media_geral = round(notas_validas.mean(), 1)
                 
-        # 3. Busca e calcula as faltas e presenças
         df_freq_calc = carregar_tabela_completa("Frequencia")
         hoje_str = date.today().strftime("%Y-%m-%d")
         presentes_hoje = 0
@@ -328,20 +336,17 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
         freq_media_pct = 0
         
         if not df_freq_calc.empty and 'status' in df_freq_calc.columns:
-            # Cálculo de Porcentagem de Frequência Geral
             total_registros = len(df_freq_calc)
             total_presencas = len(df_freq_calc[df_freq_calc['status'].astype(str).str.upper() == 'P'])
             if total_registros > 0:
                 freq_media_pct = round((total_presencas / total_registros) * 100)
                 
-            # Cálculo das presenças apenas do dia de Hoje
             if 'data' in df_freq_calc.columns:
                 df_hoje = df_freq_calc[df_freq_calc['data'].astype(str) == hoje_str]
                 presentes_hoje = len(df_hoje[df_hoje['status'].astype(str).str.upper() == 'P'])
                 ausentes_hoje = len(df_hoje[df_hoje['status'].astype(str).str.upper() == 'F'])
 
         c1, c2, c3, c4, c5 = st.columns(5)
-        # Exibe os dados que foram calculados nas variáveis acima
         c1.metric("Alunos Matriculados", str(total_alunos), "Total Ativo")
         c2.metric("Frequência Média", f"{freq_media_pct}%", "Global")
         c3.metric("Presentes", str(presentes_hoje), "Hoje")
