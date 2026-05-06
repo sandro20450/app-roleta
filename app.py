@@ -13,12 +13,27 @@ import io
 # =============================================================================
 st.set_page_config(page_title="SEEA - Gestão Escolar", page_icon="🏫", layout="wide")
 
-# DOCUMENTAÇÃO: RECUO TÁTICO DE CSS
-# Removemos os códigos de ocultação. Mantemos apenas as cores e o design das caixas.
+# DOCUMENTAÇÃO: CAMUFLAGEM NINJA DOS BOTÕES
 st.markdown("""
 <style>
     /* Mantém a cor verde claro na barra superior */
     [data-testid="stHeader"] { background-color: #d4edda !important; }
+    
+    /* CAMUFLAGEM: Pinta os textos e ícones da direita da mesma cor do fundo (Verde) */
+    [data-testid="stHeaderActionElements"] * {
+        color: #d4edda !important;
+        fill: #d4edda !important;
+        background-color: transparent !important;
+    }
+    
+    /* PROTEÇÃO: Garante que o botão de Menu Sanduíche (Esquerda) continue preto e visível */
+    [data-testid="collapsedControl"] * {
+        color: #000000 !important;
+        fill: #000000 !important;
+    }
+    
+    /* Limpeza do rodapé */
+    footer { display: none !important; visibility: hidden !important; }
     
     /* Estilos Gerais do App */
     .stApp { background-color: #f4f7f6; }
@@ -28,7 +43,6 @@ st.markdown("""
     [data-testid="stSidebar"] { background-color: #ffffff; border-right: 1px solid #ddd; }
     div[data-testid="metric-container"] { background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     .painel-selecao { background-color: #ffffff; border-radius: 15px; padding: 25px; border-top: 5px solid #004d99; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    .painel-login { background-color: #ffffff; border-radius: 15px; padding: 30px; border-top: 5px solid #004d99; box-shadow: 0 4px 10px rgba(0,0,0,0.15); margin-bottom: 20px; }
     div[data-baseweb="select"] > div, input, textarea, div[data-baseweb="base-input"] { background-color: #ffffff !important; color: #000000 !important; -webkit-text-fill-color: #000000 !important; }
     input::placeholder, textarea::placeholder { color: #888888 !important; -webkit-text-fill-color: #888888 !important; }
     .aviso-card { background-color: #fff3cd; border-left: 5px solid #ffecb5; padding: 15px; border-radius: 5px; margin-bottom: 10px; }
@@ -198,8 +212,10 @@ def fazer_logout():
 # =============================================================================
 # --- 5. MENU LATERAL (SIDEBAR) ---
 # =============================================================================
-# A barra lateral só aparece se houver login
-if st.session_state.usuario_logado is not None:
+if st.session_state.usuario_logado is None:
+    # Se não há login, desligamos o botão de menu (hamburger) no telemóvel
+    st.markdown("""<style>[data-testid="collapsedControl"] { display: none !important; }</style>""", unsafe_allow_html=True)
+else:
     with st.sidebar:
         st.markdown("<h2 style='text-align:center;'>🌎 SEEA</h2>", unsafe_allow_html=True)
         st.markdown("<p style='text-align:center; font-size:0.8em; color:#888;'>Sistema de Gestão Escolar</p>", unsafe_allow_html=True)
@@ -242,17 +258,21 @@ if st.session_state.usuario_logado is None:
     col_login, col_info = st.columns([1, 1.5])
     
     with col_login:
-        st.markdown('<div class="painel-login">', unsafe_allow_html=True)
-        st.markdown("<h3 style='text-align:center;'>🔐 Acesso ao Painel</h3>", unsafe_allow_html=True)
+        # DOCUMENTAÇÃO: Correção da Caixa Vazia.
+        # Removemos o <div> HTML e utilizamos apenas Markdown limpo e nativo.
+        st.markdown("<h3 style='text-align:center; color:#004d99; margin-bottom: 20px;'>🔐 Acesso ao Painel</h3>", unsafe_allow_html=True)
         user_input = st.text_input("Usuário", placeholder="Digite seu usuário")
         pass_input = st.text_input("Senha", type="password", placeholder="Digite sua senha")
+        
+        st.markdown("<br>", unsafe_allow_html=True) # Espaçamento extra antes do botão
         
         if st.button("Entrar no Sistema", use_container_width=True, type="primary"):
             fazer_login(user_input, pass_input)
             
+        st.markdown("<br>", unsafe_allow_html=True) # Espaçamento extra
+        
         with st.expander("❓ Esqueci minha senha"):
             st.info("Para recuperar o seu acesso, fale com a Secretaria.\n\n📞 (81) 99999-9999\n📧 admin@seea.com.br")
-        st.markdown('</div>', unsafe_allow_html=True)
 
     with col_info:
         st.markdown("### 📌 Informações Úteis")
