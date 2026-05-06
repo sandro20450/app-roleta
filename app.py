@@ -16,27 +16,11 @@ st.set_page_config(page_title="SEEA - Gestão Escolar", page_icon="🏫", layout
 st.markdown("""
 <style>
     [data-testid="stHeader"] { background-color: #d4edda !important; }
-    
-    [data-testid="stHeaderActionElements"] * {
-        color: #d4edda !important;
-        fill: #d4edda !important;
-        background-color: transparent !important;
-    }
-    
-    [data-testid="collapsedControl"] * {
-        color: #000000 !important;
-        fill: #000000 !important;
-    }
-    
+    [data-testid="stHeaderActionElements"] * { color: #d4edda !important; fill: #d4edda !important; background-color: transparent !important; }
+    [data-testid="collapsedControl"] * { color: #000000 !important; fill: #000000 !important; }
     [data-testid="stElementToolbar"] button svg, 
-    [data-testid="stElementToolbar"] button {
-        color: #ffffff !important;
-        fill: #ffffff !important;
-        stroke: #ffffff !important;
-    }
-    
+    [data-testid="stElementToolbar"] button { color: #ffffff !important; fill: #ffffff !important; stroke: #ffffff !important; }
     footer { display: none !important; visibility: hidden !important; }
-    
     [data-testid="stSidebar"] { background-color: #e8eaed !important; border-right: 1px solid #cccccc; }
     
     .stApp { background-color: #f4f7f6; }
@@ -63,10 +47,6 @@ def get_gspread_client():
         return gspread.authorize(creds)
     return None
 
-# DOCUMENTAÇÃO: NÚCLEO DE MEMÓRIA SEPARADO
-# Esta função apenas busca os dados brutos e guarda por 5 min. 
-# Se ocorrer um erro no Google, ela não entra no "try/except", fazendo com que o Streamlit
-# detecte a falha e NÃO guarde o erro na memória (evita o Cache Envenenado).
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_sheet_data_cached(nome_aba):
     gc = get_gspread_client()
@@ -75,7 +55,6 @@ def fetch_sheet_data_cached(nome_aba):
         return ws.get_all_values()
     return []
 
-# A formatação acontece de forma segura, usando os dados limpos vindos do cache
 def carregar_tabela_completa(nome_aba):
     try:
         dados = fetch_sheet_data_cached(nome_aba)
@@ -116,7 +95,6 @@ def carregar_turmas():
         if not df.empty and 'turma' in df.columns:
             turmas = df['turma'].astype(str).str.strip().unique().tolist()
             turmas = [t for t in turmas if t != ""]
-            # Retorna apenas as turmas (se houver erro, retorna lista vazia para evitar duplos menus)
             return sorted(turmas) if turmas else []
         return []
     except:
@@ -158,6 +136,9 @@ def carregar_notas_aluno(nome_aluno):
     except: 
         return pd.DataFrame() 
 
+# DOCUMENTAÇÃO: SALVAMENTO DETALHADO DAS NOTAS
+# O robô agora procura as notas individuais. Se o diário for Numérico, ele encontra e salva.
+# Se o diário for Conceitual, ele não as encontra e salva com "-" automaticamente (row.get).
 def salvar_notas_bd(turma, disciplina, bimestre, df_resultados):
     try:
         gc = get_gspread_client()
@@ -165,10 +146,22 @@ def salvar_notas_bd(turma, disciplina, bimestre, df_resultados):
             ws = gc.open("Base_SEEA").worksheet("Notas")
             novas_linhas = []
             for index, row in df_resultados.iterrows():
-                linha = [turma, disciplina, bimestre, row["ALUNO"], str(row["MÉDIA FINAL"]), row["SITUAÇÃO"], str(row["CONCEITO"])]
+                linha = [
+                    turma, 
+                    row["ALUNO"], 
+                    bimestre, 
+                    disciplina, 
+                    str(row.get("AV1 (Prova)", "-")), # Extrai AV1 ou traço
+                    str(row.get("AV2 (Prova)", "-")), # Extrai AV2 ou traço
+                    str(row.get("AV3 (Prova)", "-")), # Extrai AV3 ou traço
+                    str(row.get("PE (Trabalho)", "-")), # Extrai PE ou traço
+                    str(row["MÉDIA FINAL"]), 
+                    row["SITUAÇÃO"], 
+                    str(row["CONCEITO"])
+                ]
                 novas_linhas.append(linha)
             ws.append_rows(novas_linhas, value_input_option="USER_ENTERED")
-            st.cache_data.clear() # Limpa a memória para que as novas notas fiquem visíveis logo de seguida
+            st.cache_data.clear() # Limpa a memória
             return True
     except Exception as e:
         st.error(f"Erro ao salvar no banco de dados: {e}")
@@ -234,7 +227,7 @@ def fazer_logout():
     st.session_state.usuario_logado = None
     st.session_state.perfil_logado = None
     st.session_state.diario_aberto = False
-    st.cache_data.clear() # Garante memória limpa ao sair
+    st.cache_data.clear() 
     st.rerun()
 
 # =============================================================================
@@ -266,8 +259,6 @@ else:
             
         st.markdown("---")
         
-        # DOCUMENTAÇÃO: BOTÃO DE SINCRONIZAÇÃO DE EMERGÊNCIA
-        # O administrador e o professor agora têm o controle da memória cache.
         if st.button("🔄 Atualizar Sistema (Limpar Memória)", use_container_width=True):
             st.cache_data.clear()
             st.success("Memória renovada!")
@@ -333,14 +324,32 @@ elif st.session_state.perfil_logado == "aluno":
     with aba_boletim:
         st.markdown("### 📝 Desempenho Acadêmico")
         df_notas_aluno = carregar_notas_aluno(st.session_state.usuario_logado)
+        
+        # DOCUMENTAÇÃO: BOLETIM COM NOTAS INDIVIDUAIS
+        # Agora o portal verifica se as colunas av1, av2, av3 e pe existem no banco de dados e mostra-as ao aluno.
         if not df_notas_aluno.empty:
-            colunas_esperadas = ['disciplina', 'bimestre', 'media', 'conceito', 'situacao']
+            colunas_esperadas = ['disciplina', 'bimestre', 'av1', 'av2', 'av3', 'pe', 'media', 'conceito', 'situacao']
             colunas_presentes = [col for col in colunas_esperadas if col in df_notas_aluno.columns]
+            
             if len(colunas_presentes) > 0:
                 df_boletim_visual = df_notas_aluno[colunas_presentes]
-                renomear_para_tela = {'disciplina': 'Disciplina', 'bimestre': 'Bimestre', 'media': 'Média Final', 'conceito': 'Conceito', 'situacao': 'Situação'}
+                
+                # Traduzindo as colunas do banco de dados para os nomes bonitos da tela
+                renomear_para_tela = {
+                    'disciplina': 'Disciplina',
+                    'bimestre': 'Bimestre',
+                    'av1': 'AV1',
+                    'av2': 'AV2',
+                    'av3': 'AV3',
+                    'pe': 'PE',
+                    'media': 'Média Final',
+                    'conceito': 'Conceito',
+                    'situacao': 'Situação'
+                }
                 df_boletim_visual = df_boletim_visual.rename(columns=renomear_para_tela)
                 st.dataframe(df_boletim_visual, hide_index=True, use_container_width=True)
+            else:
+                st.info("⚠️ A planilha de notas não está com as colunas formatadas corretamente (av1, av2...).")
         else:
             st.info("📌 O boletim está vazio. Os professores ainda não lançaram notas neste período.")
 
@@ -548,7 +557,6 @@ elif st.session_state.perfil_logado == "professor":
             st.markdown("### Quadro de Lançamentos")
             lista_alunos_notas = carregar_alunos(st.session_state.ctx_turma)
             
-            # Bloqueio de Segurança para o Diário
             if not lista_alunos_notas:
                 st.warning("⚠️ Nenhum aluno foi encontrado para esta turma. Por favor, verifique se a planilha 'Alunos' está preenchida corretamente ou clique no botão 'Atualizar Sistema' na barra lateral.")
             else:
