@@ -34,22 +34,25 @@ st.markdown("""
         color: #1e3d59 !important;
         font-weight: bold;
     }
-    /* 2. Caixa do Código PIX */
-    [data-testid="stCodeBlock"] {
-        background-color: #e8eaed !important;
-    }
-    [data-testid="stCodeBlock"] span {
-        color: #004d99 !important;
-        font-weight: bold;
-    }
+    
+    /* 2. Caixa do Código PIX (Fundo cinza e texto bem visível) */
+    [data-testid="stCodeBlock"] { background-color: #cccccc !important; border-radius: 8px; padding: 2px;}
+    [data-testid="stCodeBlock"] pre { background-color: #cccccc !important; }
+    [data-testid="stCodeBlock"] code { color: #004d99 !important; font-weight: bold !important; font-size: 1.1em;}
+    [data-testid="stCodeBlock"] span { color: #004d99 !important; font-weight: bold !important; }
+    
     /* 3. Botões de Link Externo (Plataforma de Pagamento) */
-    a[data-testid="stLinkButton"] button {
-        background-color: #004d99 !important;
-        color: #ffffff !important;
-        border: none !important;
+    [data-testid="stLinkButton"] button {
+        background-color: #cccccc !important;
+        border: 1px solid #a0a0a0 !important;
+        border-radius: 8px !important;
     }
-    a[data-testid="stLinkButton"] button p {
-        color: #ffffff !important;
+    [data-testid="stLinkButton"] button p {
+        color: #004d99 !important;
+        font-weight: bold !important;
+    }
+    [data-testid="stLinkButton"] button:hover {
+        background-color: #b3b3b3 !important; /* Fica um pouquinho mais escuro ao passar o rato */
     }
 
     .stApp { background-color: #f4f7f6; }
@@ -473,7 +476,7 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
                 freq_media_pct = round((total_presencas / total_registros) * 100)
                 
             if 'data' in df_freq_calc.columns:
-                df_hoje = df_freq_calc[df_hoje['data'].astype(str) == hoje_str]
+                df_hoje = df_freq_calc[df_freq_calc['data'].astype(str) == hoje_str]
                 presentes_hoje = len(df_hoje[df_hoje['status'].astype(str).str.upper() == 'P'])
                 ausentes_hoje = len(df_hoje[df_hoje['status'].astype(str).str.upper() == 'F'])
 
@@ -596,7 +599,6 @@ elif st.session_state.perfil_logado == "professor":
             with c_sel2: sel_disc = st.selectbox("📄 Disciplina", lista_disciplinas)
             
             sel_aval = st.selectbox("⚖️ Sistema de Avaliação", ["Selecione...", "Numérico (Notas 0 a 10)", "Conceitual (Ótimo, Bom, Regular)"])
-            
             st.markdown('</div>', unsafe_allow_html=True)
             
             if sel_turma != "Selecione..." and sel_disc != "Selecione..." and sel_aval != "Selecione...":
@@ -656,10 +658,8 @@ elif st.session_state.perfil_logado == "professor":
                     df_editado = st.data_editor(df_notas, hide_index=True, use_container_width=True, column_config={"ALUNO": st.column_config.TextColumn(disabled=True), "I Unidade": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "II Unidade": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "III Unidade": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "IV Unidade": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f")})
                     
                     df_resultado = df_editado.copy()
-                    
                     df_resultado["MÉDIA FINAL"] = df_resultado[["I Unidade", "II Unidade", "III Unidade", "IV Unidade"]].sum(axis=1) / 4
                     df_resultado["MÉDIA FINAL"] = df_resultado["MÉDIA FINAL"].round(1)
-                    
                     df_resultado["SITUAÇÃO"] = df_resultado["MÉDIA FINAL"].apply(lambda m: "🟢 APROVADO" if m >= 7.0 else ("🟡 EM ANDAMENTO/RECUPERAÇÃO" if m > 0.0 else "⚪ PENDENTE"))
                     
                     st.dataframe(df_resultado[["ALUNO", "MÉDIA FINAL", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
