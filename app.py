@@ -378,8 +378,8 @@ if st.session_state.usuario_logado is None:
         with st.expander("📞 **Contatos e Suporte**", expanded=False):
             st.markdown("Precisando de ajuda? Nossa equipe está pronta para atender:")
             st.markdown("- **Secretaria (WhatsApp):** (81) 98328-8495")
-            st.markdown("- **Diretoria:** diretoria@seea.com.br")
-            st.markdown("- **Suporte Técnico:** suporte@seea.com.br")
+            st.markdown("- **Coord. Infantil:** (81) 99394-3245")
+            st.markdown("- **Coord. Fundamental 1:** (81) 98508-0876")
 
 elif st.session_state.perfil_logado == "aluno":
     st.markdown(f"<h1 style='text-align: center;'>🎓 Portal do Aluno</h1>", unsafe_allow_html=True)
