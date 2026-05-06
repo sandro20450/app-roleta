@@ -18,15 +18,23 @@ st.markdown("""
     /* Mantém a cor verde claro na barra superior */
     [data-testid="stHeader"] { background-color: #d4edda !important; }
     
+    /* DOCUMENTAÇÃO: AJUSTE DE CONTRASTE DOS ÍCONES DAS TABELAS */
+    /* Garante que os ícones do menu interativo flutuante (Download, Busca, Tela Cheia) fiquem brancos */
+    [data-testid="stElementToolbar"] button svg, 
+    [data-testid="stElementToolbar"] button {
+        color: #ffffff !important;
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+    }
+    
+    /* Ajuste de cor da Sidebar (Menu Lateral) */
+    [data-testid="stSidebar"] { background-color: #e8eaed !important; border-right: 1px solid #cccccc; }
+    
     /* Estilos Gerais do App */
     .stApp { background-color: #f4f7f6; }
     .stApp p, .stApp span, .stApp label, .stApp div[data-testid="stMarkdownContainer"] { color: #1e3d59 !important; }
     h1, h2, h3, h4, h5 { color: #004d99 !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     .stButton > button p, .stButton > button span { color: #ffffff !important; }
-    
-    /* DOCUMENTAÇÃO: AJUSTE DE COR DA SIDEBAR */
-    /* Trocamos o fundo de #ffffff (branco) para #e8eaed (cinza suave), com uma borda levemente mais escura (#cccccc) */
-    [data-testid="stSidebar"] { background-color: #e8eaed !important; border-right: 1px solid #cccccc; }
     
     div[data-testid="metric-container"] { background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     .painel-selecao { background-color: #ffffff; border-radius: 15px; padding: 25px; border-top: 5px solid #004d99; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
@@ -201,7 +209,6 @@ def fazer_logout():
 # --- 5. MENU LATERAL (SIDEBAR) ---
 # =============================================================================
 if st.session_state.usuario_logado is None:
-    # Se não há login, desligamos o botão de menu (hamburger) no telemóvel
     st.markdown("""<style>[data-testid="collapsedControl"] { display: none !important; }</style>""", unsafe_allow_html=True)
 else:
     with st.sidebar:
@@ -246,17 +253,17 @@ if st.session_state.usuario_logado is None:
     col_login, col_info = st.columns([1, 1.5])
     
     with col_login:
-        st.markdown('<div class="painel-login">', unsafe_allow_html=True)
-        st.markdown("<h3 style='text-align:center;'>🔐 Acesso ao Painel</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align:center; color:#004d99; margin-bottom: 20px;'>🔐 Acesso ao Painel</h3>", unsafe_allow_html=True)
         user_input = st.text_input("Usuário", placeholder="Digite seu usuário")
         pass_input = st.text_input("Senha", type="password", placeholder="Digite sua senha")
+        st.markdown("<br>", unsafe_allow_html=True)
         
         if st.button("Entrar no Sistema", use_container_width=True, type="primary"):
             fazer_login(user_input, pass_input)
             
+        st.markdown("<br>", unsafe_allow_html=True)
         with st.expander("❓ Esqueci minha senha"):
             st.info("Para recuperar o seu acesso, fale com a Secretaria.\n\n📞 (81) 99999-9999\n📧 admin@seea.com.br")
-        st.markdown('</div>', unsafe_allow_html=True)
 
     with col_info:
         st.markdown("### 📌 Informações Úteis")
@@ -347,7 +354,7 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
                 freq_media_pct = round((total_presencas / total_registros) * 100)
                 
             if 'data' in df_freq_calc.columns:
-                df_hoje = df_freq_calc[df_freq_calc['data'].astype(str) == hoje_str]
+                df_hoje = df_freq_calc[df_hoje['data'].astype(str) == hoje_str]
                 presentes_hoje = len(df_hoje[df_hoje['status'].astype(str).str.upper() == 'P'])
                 ausentes_hoje = len(df_hoje[df_hoje['status'].astype(str).str.upper() == 'F'])
 
