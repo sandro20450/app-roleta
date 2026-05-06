@@ -362,7 +362,7 @@ if st.session_state.usuario_logado is None:
                 
                 st.markdown("##### 3. PAGAMENTO NA PLATAFORMA ASAAS")
                 st.write("Acesse o link para oportal de pagamentos seguro.")
-                st.link_button("💳 Abrir Plataforma de ASAAS", "https://www.asaas.com.br", use_container_width=True)
+                st.link_button("💳 Abrir Plataforma de ASAAS", "https://api.whatsapp.com/send?phone=5547933007606", use_container_width=True)
                 
             with c_pix2:
                 st.markdown("##### 2. QR Code")
