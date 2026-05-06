@@ -111,7 +111,6 @@ def salvar_notas_bd(turma, disciplina, bimestre, df_resultados):
         st.error(f"Erro ao salvar no banco de dados: {e}")
         return False
 
-# DOCUMENTAÇÃO: BLINDAGEM DE DADOS NA CARGA DE NOTAS
 def carregar_notas_aluno(nome_aluno):
     try:
         gc = get_gspread_client()
@@ -122,14 +121,9 @@ def carregar_notas_aluno(nome_aluno):
             if not records:
                 return pd.DataFrame()
                 
-            # Transforma os registros puros em um DataFrame do Pandas
             df = pd.DataFrame(records)
-            
-            # BLINDAGEM: Converte todos os nomes de colunas para minúsculas e remove espaços vazios.
-            # Isso evita que um "Conceito " com maiúscula e espaço na planilha quebre o aplicativo.
             df.columns = df.columns.astype(str).str.strip().str.lower()
             
-            # Verifica com segurança se a coluna 'aluno' existe antes de tentar filtrar
             if 'aluno' in df.columns:
                 df_filtrado = df[df['aluno'].astype(str).str.strip() == nome_aluno.strip()]
                 return df_filtrado
@@ -137,6 +131,35 @@ def carregar_notas_aluno(nome_aluno):
                 return pd.DataFrame()
     except Exception as e:
         return pd.DataFrame() 
+
+# DOCUMENTAÇÃO: FUNÇÕES DE GESTÃO ADMIN (Leitura e Escrita Completa)
+def carregar_tabela_completa(nome_aba):
+    try:
+        gc = get_gspread_client()
+        if gc:
+            ws = gc.open("Base_SEEA").worksheet(nome_aba)
+            records = ws.get_all_records()
+            return pd.DataFrame(records)
+    except Exception as e:
+        st.error(f"Erro ao carregar a aba {nome_aba}: {e}")
+        return pd.DataFrame()
+
+def sincronizar_aba_completa(nome_aba, df_editado):
+    try:
+        gc = get_gspread_client()
+        if gc:
+            ws = gc.open("Base_SEEA").worksheet(nome_aba)
+            # Limpa valores nulos do pandas para evitar erros no Google Sheets
+            df_editado = df_editado.fillna("")
+            dados_lista = [df_editado.columns.values.tolist()] + df_editado.values.tolist()
+            
+            # Limpa a aba inteira e escreve a tabela nova por cima
+            ws.clear()
+            ws.update(values=dados_lista, range_name="A1")
+            return True
+    except Exception as e:
+        st.error(f"Erro ao sincronizar a aba {nome_aba}: {e}")
+        return False
 
 # =============================================================================
 # --- 3. CONFIGURAÇÃO DA INTELIGÊNCIA ARTIFICIAL (GEMINI) ---
@@ -183,6 +206,10 @@ with st.sidebar:
         pass_input = st.text_input("Senha", type="password", placeholder="Digite sua senha")
         if st.button("Entrar", use_container_width=True, type="primary"):
             fazer_login(user_input, pass_input)
+            
+        # DOCUMENTAÇÃO: BOTÃO DE RECUPERAÇÃO DE SENHA (ORIENTAÇÃO)
+        with st.expander("❓ Esqueci minha senha"):
+            st.info("Para recuperar o seu acesso, por favor entre em contato com a Secretaria da Escola.\n\n📞 WhatsApp: (81) 99999-9999\n📧 E-mail: admin@seea.com.br")
     else:
         st.markdown(f"""<div style='background-color: #d4edda; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 1px solid #c3e6cb;'><span style='color: #155724 !important; font-weight: bold; font-size: 1.1em;'>👤 {st.session_state.usuario_logado}</span></div>""", unsafe_allow_html=True)
         
@@ -193,7 +220,7 @@ with st.sidebar:
             
         elif st.session_state.perfil_logado in ["admin", "diretoria"]:
             st.markdown("<span style='color:#888; font-size:0.8em; font-weight:bold;'>ADMINISTRAÇÃO</span>", unsafe_allow_html=True)
-            st.button("⚙️ Painel Geral", use_container_width=True)
+            st.button("⚙️ Painel de Gestão", use_container_width=True)
             
         elif st.session_state.perfil_logado == "aluno":
             st.markdown("<span style='color:#888; font-size:0.8em; font-weight:bold;'>ÁREA DO ALUNO</span>", unsafe_allow_html=True)
@@ -241,14 +268,12 @@ elif st.session_state.perfil_logado == "aluno":
         df_notas_aluno = carregar_notas_aluno(st.session_state.usuario_logado)
         
         if not df_notas_aluno.empty:
-            # BLINDAGEM DE EXIBIÇÃO: Verifica quais colunas existem e extrai de forma segura
             colunas_esperadas = ['disciplina', 'bimestre', 'media', 'conceito', 'situacao']
             colunas_presentes = [col for col in colunas_esperadas if col in df_notas_aluno.columns]
             
             if len(colunas_presentes) > 0:
                 df_boletim_visual = df_notas_aluno[colunas_presentes]
                 
-                # Renomeia as colunas de forma elegante para o usuário ler
                 renomear_para_tela = {
                     'disciplina': 'Disciplina',
                     'bimestre': 'Bimestre',
@@ -274,13 +299,52 @@ elif st.session_state.perfil_logado == "aluno":
         </div>
         """, unsafe_allow_html=True)
 
+# ---------------------------------------------------------
+# PAINEL DA DIRETORIA (AGORA COM GESTÃO DE USUÁRIOS E ALUNOS)
+# ---------------------------------------------------------
 elif st.session_state.perfil_logado in ["admin", "diretoria"]:
-    st.header("👑 Painel da Diretoria")
-    st.markdown("Você está conectado como Administrador. O sistema identificou o seu nível de acesso máximo.")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Alunos Cadastrados", "Base_SEEA", "Conectado")
-    c2.metric("Inteligência Artificial", "Gemini API", "Online" if ia_configurada else "Offline")
-    c3.metric("Status do Servidor", "Estável", "100%")
+    st.header("👑 Painel da Diretoria - Centro de Controle")
+    st.markdown("Bem-vindo ao centro de gestão. Faça adições, edições ou exclusões diretamente nas tabelas abaixo.")
+    
+    aba_metricas, aba_usuarios, aba_alunos = st.tabs(["📊 Visão Geral", "🔐 Gestão de Logins", "🎓 Gestão de Alunos"])
+    
+    with aba_metricas:
+        st.markdown("### Status do Sistema")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Banco de Dados", "Google Sheets", "Conectado")
+        c2.metric("Inteligência Artificial", "Gemini API", "Online" if ia_configurada else "Offline")
+        c3.metric("Segurança", "Ativa", "100%")
+        
+    with aba_usuarios:
+        st.markdown("### 🔐 Tabela de Usuários (Logins e Senhas)")
+        st.info("💡 **Dica:** Você pode alterar senhas, adicionar novas linhas (novos logins) ou excluir linhas clicando na lixeira à esquerda. Clique no botão de Salvar no final para sincronizar.")
+        
+        df_usuarios = carregar_tabela_completa("Usuarios")
+        if not df_usuarios.empty:
+            # num_rows="dynamic" permite criar e apagar linhas!
+            df_usuarios_editado = st.data_editor(df_usuarios, use_container_width=True, num_rows="dynamic", key="editor_users")
+            
+            if st.button("💾 Sincronizar Senhas no Banco de Dados", type="primary", use_container_width=True):
+                with st.spinner("Sincronizando..."):
+                    if sincronizar_aba_completa("Usuarios", df_usuarios_editado):
+                        st.success("✅ Logins e senhas atualizados com sucesso!")
+        else:
+            st.warning("Não foi possível carregar a tabela de Usuários.")
+
+    with aba_alunos:
+        st.markdown("### 🎓 Tabela de Matrículas (Cadastro de Alunos)")
+        st.info("💡 **Dica:** Gerencie o cadastro oficial dos alunos. O nome do aluno aqui deve ser idêntico ao nome de login dele na aba de Usuários.")
+        
+        df_alunos = carregar_tabela_completa("Alunos")
+        if not df_alunos.empty:
+            df_alunos_editado = st.data_editor(df_alunos, use_container_width=True, num_rows="dynamic", key="editor_alunos")
+            
+            if st.button("💾 Sincronizar Alunos no Banco de Dados", type="primary", use_container_width=True):
+                with st.spinner("Sincronizando..."):
+                    if sincronizar_aba_completa("Alunos", df_alunos_editado):
+                        st.success("✅ Matrículas atualizadas com sucesso!")
+        else:
+            st.warning("Não foi possível carregar a tabela de Alunos.")
 
 elif st.session_state.perfil_logado == "professor":
     aba_dash, aba_freq, aba_notas, aba_ia = st.tabs(["📊 Dashboard", "📅 Frequência", "📝 Notas", "🤖 Gerador IA"])
