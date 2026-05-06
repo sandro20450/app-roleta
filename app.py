@@ -13,28 +13,31 @@ import io
 # =============================================================================
 st.set_page_config(page_title="SEEA - Gestão Escolar", page_icon="🏫", layout="wide")
 
-# DOCUMENTAÇÃO: MODO WHITE-LABEL EXTREMO
-# Estes comandos CSS são agressivos para esconder qualquer rastro do Streamlit
+# DOCUMENTAÇÃO: MODO WHITE-LABEL EXTREMO (BLINDAGEM CLOUD)
+# Comandos agressivos usando seletores "Coringa" (*= e >) para vencer as injeções do Streamlit Cloud
 st.markdown("""
 <style>
-    /* Oculta as ferramentas padrão do canto superior direito */
+    /* 1. ANULAÇÃO DO CABEÇALHO (TOPO DIREITO) */
+    /* Mantém o fundo verde no Header */
+    header[data-testid="stHeader"] { background-color: #d4edda !important; }
+    /* Destrói (oculta) todos os botões e menus injetados DENTRO do header */
+    header[data-testid="stHeader"] > div { display: none !important; }
+    [data-testid="stToolbar"] { display: none !important; visibility: hidden !important; }
     [data-testid="stHeaderActionElements"] { display: none !important; }
-    
-    /* Oculta o botão de Deploy genérico */
-    .stDeployButton { display: none !important; }
-    
-    /* Oculta a marca d'água e o avatar do Streamlit Cloud no canto inferior direito */
-    [class^="viewerBadge_container"] { display: none !important; }
-    [class^="styles_viewerBadge"] { display: none !important; }
-    #viewerBadge_container__1JC33 { display: none !important; }
-    
-    /* Oculta o rodapé 'Made with Streamlit' */
-    footer { visibility: hidden !important; }
+    #MainMenu { display: none !important; }
 
-    /* Mantém a cor verde claro na barra superior */
-    [data-testid="stHeader"] { background-color: #d4edda !important; }
+    /* 2. ANULAÇÃO DA MARCA D'ÁGUA CLOUD (CANTO INFERIOR DIREITO) */
+    /* O asterisco *= procura e anula qualquer classe que contenha essas palavras */
+    [class*="viewerBadge"] { display: none !important; visibility: hidden !important; opacity: 0 !important; }
+    [class*="ViewerBadge"] { display: none !important; }
+    iframe[title*="badge"] { display: none !important; }
     
-    /* Estilos Gerais do App */
+    /* 3. LIMPEZA DO RODAPÉ (FOOTER) */
+    footer { display: none !important; visibility: hidden !important; }
+
+    /* =========================================================
+       ESTILOS PADRÕES DO NOSSO APLICATIVO SEEA
+       ========================================================= */
     .stApp { background-color: #f4f7f6; }
     .stApp p, .stApp span, .stApp label, .stApp div[data-testid="stMarkdownContainer"] { color: #1e3d59 !important; }
     h1, h2, h3, h4, h5 { color: #004d99 !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -212,10 +215,8 @@ def fazer_logout():
 # =============================================================================
 # --- 5. MENU LATERAL (SIDEBAR) ---
 # =============================================================================
-# A barra lateral só deve aparecer se alguém estiver logado!
 if st.session_state.usuario_logado is None:
-    # DOCUMENTAÇÃO: OCULTAR SIDEBAR COMPLETAMENTE
-    # Se não há login, desligamos o botão de menu (hamburger) no telemóvel para um UX perfeito
+    # Se não há login, desligamos o botão de menu (hamburger) no telemóvel
     st.markdown("""<style>[data-testid="collapsedControl"] { display: none !important; }</style>""", unsafe_allow_html=True)
 else:
     with st.sidebar:
@@ -246,11 +247,9 @@ else:
 # --- 6. ÁREA PRINCIPAL (FRONT-END) ---
 # =============================================================================
 
-# DOCUMENTAÇÃO: NOVA TELA DE LOGIN CENTRAL
 if st.session_state.usuario_logado is None:
     st.markdown("<h1 style='text-align: center; margin-bottom: 30px;'>Bem-vindo ao Portal SEEA</h1>", unsafe_allow_html=True)
     
-    # Exibir Avisos Gerais para quem chega no site
     df_avisos = carregar_tabela_completa("Avisos")
     if not df_avisos.empty and 'tipo' in df_avisos.columns:
         avisos_gerais = df_avisos[df_avisos['tipo'].astype(str).str.strip().str.upper() == 'GERAL']
@@ -259,7 +258,6 @@ if st.session_state.usuario_logado is None:
                 st.warning(f"📢 **COMUNICADO OFICIAL ({aviso.get('data', '')}):** {aviso.get('mensagem', '')}", icon="🏫")
             st.markdown("<br>", unsafe_allow_html=True)
     
-    # Dividindo a tela principal para o Login ficar em destaque absoluto
     col_login, col_info = st.columns([1, 1.5])
     
     with col_login:
@@ -281,7 +279,6 @@ if st.session_state.usuario_logado is None:
         with c_info1: st.success("💰 **Financeiro**\n\nAcesse boletos e pagamentos de mensalidades de forma prática.")
         with c_info2: st.warning("📍 **Localização**\n\nVeja como chegar à escola e horários de funcionamento.")
         st.error("📞 **Contatos Gerais**\n\nSecretaria: (81) 99999-9999\nDiretoria: diretoria@seea.com.br")
-
 
 elif st.session_state.perfil_logado == "aluno":
     st.markdown(f"<h1 style='text-align: center;'>🎓 Portal do Aluno</h1>", unsafe_allow_html=True)
