@@ -15,23 +15,19 @@ st.set_page_config(page_title="SEEA - Gestão Escolar", page_icon="🏫", layout
 
 st.markdown("""
 <style>
-    /* Mantém a cor verde claro na barra superior */
     [data-testid="stHeader"] { background-color: #d4edda !important; }
     
-    /* Camuflagem dos botões da nuvem */
     [data-testid="stHeaderActionElements"] * {
         color: #d4edda !important;
         fill: #d4edda !important;
         background-color: transparent !important;
     }
     
-    /* Garante que o botão de Menu Sanduíche (Esquerda) continue preto e visível */
     [data-testid="collapsedControl"] * {
         color: #000000 !important;
         fill: #000000 !important;
     }
     
-    /* Ajuste de contraste dos ícones nas tabelas (Mural e Diário) */
     [data-testid="stElementToolbar"] button svg, 
     [data-testid="stElementToolbar"] button {
         color: #ffffff !important;
@@ -39,13 +35,10 @@ st.markdown("""
         stroke: #ffffff !important;
     }
     
-    /* Limpeza do rodapé */
     footer { display: none !important; visibility: hidden !important; }
     
-    /* Ajuste de cor da Sidebar (Menu Lateral) */
     [data-testid="stSidebar"] { background-color: #e8eaed !important; border-right: 1px solid #cccccc; }
     
-    /* Estilos Gerais do App */
     .stApp { background-color: #f4f7f6; }
     .stApp p, .stApp span, .stApp label, .stApp div[data-testid="stMarkdownContainer"] { color: #1e3d59 !important; }
     h1, h2, h3, h4, h5 { color: #004d99 !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -61,7 +54,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =============================================================================
-# --- 2. CONEXÃO COM BANCO DE DADOS (GOOGLE SHEETS) ---
+# --- 2. CONEXÃO COM BANCO DE DADOS E MEMÓRIA ---
 # =============================================================================
 @st.cache_resource(ttl=3600, show_spinner=False)
 def get_gspread_client():
@@ -70,31 +63,33 @@ def get_gspread_client():
         return gspread.authorize(creds)
     return None
 
-# DOCUMENTAÇÃO: MOTOR DE MEMÓRIA (CACHE)
-# O comando @st.cache_data guarda a tabela na memória RAM do servidor por 5 minutos (300 segundos).
-# Isto impede que o Google bloqueie o nosso sistema quando digita notas muito rapidamente.
+# DOCUMENTAÇÃO: NÚCLEO DE MEMÓRIA SEPARADO
+# Esta função apenas busca os dados brutos e guarda por 5 min. 
+# Se ocorrer um erro no Google, ela não entra no "try/except", fazendo com que o Streamlit
+# detecte a falha e NÃO guarde o erro na memória (evita o Cache Envenenado).
 @st.cache_data(ttl=300, show_spinner=False)
+def fetch_sheet_data_cached(nome_aba):
+    gc = get_gspread_client()
+    if gc:
+        ws = gc.open("Base_SEEA").worksheet(nome_aba)
+        return ws.get_all_values()
+    return []
+
+# A formatação acontece de forma segura, usando os dados limpos vindos do cache
 def carregar_tabela_completa(nome_aba):
     try:
-        # A ligação à nuvem precisa ser chamada dentro do bloco de cache
-        gc = get_gspread_client()
-        if gc:
-            ws = gc.open("Base_SEEA").worksheet(nome_aba)
-            dados = ws.get_all_values()
+        dados = fetch_sheet_data_cached(nome_aba)
+        if not dados:
+            if nome_aba == "Avisos": return pd.DataFrame(columns=["tipo", "aluno", "mensagem", "data"])
+            return pd.DataFrame()
             
-            if not dados:
-                if nome_aba == "Avisos": return pd.DataFrame(columns=["tipo", "aluno", "mensagem", "data"])
-                return pd.DataFrame()
-            
-            # Cria a tabela
-            if len(dados) == 1:
-                df = pd.DataFrame(columns=dados[0])
-            else:
-                df = pd.DataFrame(dados[1:], columns=dados[0])
-            
-            # Blindagem Extra: Põe todas as colunas em minúsculas e sem espaços inúteis
-            df.columns = df.columns.astype(str).str.strip().str.lower()
-            return df
+        if len(dados) == 1:
+            df = pd.DataFrame(columns=dados[0])
+        else:
+            df = pd.DataFrame(dados[1:], columns=dados[0])
+        
+        df.columns = df.columns.astype(str).str.strip().str.lower()
+        return df
     except Exception as e:
         return pd.DataFrame()
 
@@ -112,7 +107,7 @@ def carregar_usuarios():
                     }
             return usuarios
         return {}
-    except Exception as e:
+    except Exception:
         return {}
 
 def carregar_turmas():
@@ -121,41 +116,36 @@ def carregar_turmas():
         if not df.empty and 'turma' in df.columns:
             turmas = df['turma'].astype(str).str.strip().unique().tolist()
             turmas = [t for t in turmas if t != ""]
-            return sorted(turmas) if turmas else ["Selecione..."]
-        return ["Selecione..."]
+            # Retorna apenas as turmas (se houver erro, retorna lista vazia para evitar duplos menus)
+            return sorted(turmas) if turmas else []
+        return []
     except:
-        return ["Selecione..."]
+        return []
 
 def carregar_alunos(turma):
     try:
         df = carregar_tabela_completa("Alunos")
         if not df.empty and 'turma' in df.columns:
-            # Reconhece "nome_aluno" ou apenas "aluno"
             col_nome = 'nome_aluno' if 'nome_aluno' in df.columns else ('aluno' if 'aluno' in df.columns else None)
-            
             if col_nome:
                 turma_limpa = str(turma).strip()
                 df_filtrado = df[df['turma'].astype(str).str.strip() == turma_limpa]
-                
                 alunos = df_filtrado[col_nome].astype(str).str.strip().tolist()
                 alunos = [a for a in alunos if a != ""]
-                
-                return alunos if alunos else ["Nenhum aluno cadastrado nesta turma."]
-        return ["Tabela de alunos vazia ou mal formatada."]
+                return alunos if alunos else []
+        return []
     except Exception as e:
-        return [f"Erro interno do sistema: {str(e)}"]
+        return []
 
 def buscar_dados_aluno(nome_aluno):
     try:
         df = carregar_tabela_completa("Alunos")
-        # Procura coluna de nome flexível
         col_nome = 'nome_aluno' if 'nome_aluno' in df.columns else ('aluno' if 'aluno' in df.columns else None)
-        
         if not df.empty and col_nome:
             aluno_row = df[df[col_nome].astype(str).str.strip() == str(nome_aluno).strip()]
             if not aluno_row.empty:
                 return aluno_row.iloc[0].to_dict()
-    except Exception as e:
+    except Exception:
         return None
     return None
 
@@ -168,8 +158,6 @@ def carregar_notas_aluno(nome_aluno):
     except: 
         return pd.DataFrame() 
 
-# DOCUMENTAÇÃO: LIMPEZA DE CACHE APÓS GUARDAR
-# Sempre que guardamos algo novo, forçamos o sistema a limpar a memória para atualizar a visualização.
 def salvar_notas_bd(turma, disciplina, bimestre, df_resultados):
     try:
         gc = get_gspread_client()
@@ -180,8 +168,7 @@ def salvar_notas_bd(turma, disciplina, bimestre, df_resultados):
                 linha = [turma, disciplina, bimestre, row["ALUNO"], str(row["MÉDIA FINAL"]), row["SITUAÇÃO"], str(row["CONCEITO"])]
                 novas_linhas.append(linha)
             ws.append_rows(novas_linhas, value_input_option="USER_ENTERED")
-            
-            st.cache_data.clear() # <- Invalida a memória
+            st.cache_data.clear() # Limpa a memória para que as novas notas fiquem visíveis logo de seguida
             return True
     except Exception as e:
         st.error(f"Erro ao salvar no banco de dados: {e}")
@@ -197,8 +184,7 @@ def salvar_frequencia_bd(data_aula, turma, assunto, lista_presenca):
                 linha = [str(data_aula), turma, item['aluno'], item['status'], assunto]
                 novas_linhas.append(linha)
             ws.append_rows(novas_linhas, value_input_option="USER_ENTERED")
-            
-            st.cache_data.clear() # <- Invalida a memória
+            st.cache_data.clear()
             return True
     except Exception as e:
         st.error(f"Erro ao salvar frequência no banco: {e}")
@@ -213,8 +199,7 @@ def sincronizar_aba_completa(nome_aba, df_editado):
             dados_lista = [df_editado.columns.values.tolist()] + df_editado.values.tolist()
             ws.clear()
             ws.update(values=dados_lista, range_name="A1")
-            
-            st.cache_data.clear() # <- Invalida a memória
+            st.cache_data.clear()
             return True
     except Exception as e:
         st.error(f"Erro ao sincronizar a aba {nome_aba}: {e}")
@@ -249,6 +234,7 @@ def fazer_logout():
     st.session_state.usuario_logado = None
     st.session_state.perfil_logado = None
     st.session_state.diario_aberto = False
+    st.cache_data.clear() # Garante memória limpa ao sair
     st.rerun()
 
 # =============================================================================
@@ -277,6 +263,16 @@ else:
             st.markdown("<span style='color:#888; font-size:0.8em; font-weight:bold;'>ÁREA DO ALUNO</span>", unsafe_allow_html=True)
             st.button("📊 Meu Boletim", use_container_width=True)
             st.button("📢 Avisos Escolares", use_container_width=True)
+            
+        st.markdown("---")
+        
+        # DOCUMENTAÇÃO: BOTÃO DE SINCRONIZAÇÃO DE EMERGÊNCIA
+        # O administrador e o professor agora têm o controle da memória cache.
+        if st.button("🔄 Atualizar Sistema (Limpar Memória)", use_container_width=True):
+            st.cache_data.clear()
+            st.success("Memória renovada!")
+            time.sleep(1)
+            st.rerun()
             
         st.markdown("---")
         if st.button("🚪 Sair", use_container_width=True): fazer_logout()
@@ -477,7 +473,7 @@ elif st.session_state.perfil_logado == "professor":
         col_turma, col_data = st.columns(2)
         
         lista_turmas = carregar_turmas()
-        with col_turma: selecao_turma = st.selectbox("Turma:", lista_turmas, key="freq_turma")
+        with col_turma: selecao_turma = st.selectbox("Turma:", ["Selecione..."] + lista_turmas, key="freq_turma")
         with col_data: data_aula = st.date_input("Data da Aula:", date.today())
         
         assunto_aula = st.text_area("📚 Assunto do Dia / Conteúdo Lecionado:", placeholder="Descreva os conteúdos abordados nesta aula...", height=100)
@@ -487,23 +483,25 @@ elif st.session_state.perfil_logado == "professor":
             st.markdown("<div style='display:flex; justify-content:space-between; padding:0 20px; color:#004d99; font-weight:bold;'><span>ALUNO</span><span>STATUS DE PRESENÇA</span></div><hr style='margin:5px 0; border-top: 2px solid #ccc;'>", unsafe_allow_html=True)
             
             lista_alunos = carregar_alunos(selecao_turma)
-            lista_presenca = []
-            
-            for aluno in lista_alunos:
-                ca, cb = st.columns([3, 2])
-                with ca: st.markdown(f"<span style='font-weight:bold; color:#1e3d59;'>{aluno}</span>", unsafe_allow_html=True)
-                with cb: 
-                    status_aluno = st.radio("Status", ["P", "F", "FJ"], horizontal=True, label_visibility="collapsed", key=f"rad_{aluno}")
-                    lista_presenca.append({"aluno": aluno, "status": status_aluno})
-                st.markdown("<hr style='margin:5px 0; opacity:0.3;'>", unsafe_allow_html=True)
-            
-            if st.button("💾 Salvar Chamada Escolar", type="primary", use_container_width=True):
-                if assunto_aula.strip() == "":
-                    st.warning("⚠️ O assunto da aula não pode estar em branco.")
-                else:
-                    with st.spinner("Registrando as presenças no sistema..."):
-                        if salvar_frequencia_bd(data_aula, selecao_turma, assunto_aula, lista_presenca):
-                            st.success(f"✅ Frequência do dia {data_aula.strftime('%d/%m/%Y')} registrada e salva com sucesso!")
+            if not lista_alunos:
+                st.warning("Nenhum aluno encontrado para esta turma. Clique em 'Atualizar Sistema' na barra lateral.")
+            else:
+                lista_presenca = []
+                for aluno in lista_alunos:
+                    ca, cb = st.columns([3, 2])
+                    with ca: st.markdown(f"<span style='font-weight:bold; color:#1e3d59;'>{aluno}</span>", unsafe_allow_html=True)
+                    with cb: 
+                        status_aluno = st.radio("Status", ["P", "F", "FJ"], horizontal=True, label_visibility="collapsed", key=f"rad_{aluno}")
+                        lista_presenca.append({"aluno": aluno, "status": status_aluno})
+                    st.markdown("<hr style='margin:5px 0; opacity:0.3;'>", unsafe_allow_html=True)
+                
+                if st.button("💾 Salvar Chamada Escolar", type="primary", use_container_width=True):
+                    if assunto_aula.strip() == "":
+                        st.warning("⚠️ O assunto da aula não pode estar em branco.")
+                    else:
+                        with st.spinner("Registrando as presenças no sistema..."):
+                            if salvar_frequencia_bd(data_aula, selecao_turma, assunto_aula, lista_presenca):
+                                st.success(f"✅ Frequência do dia {data_aula.strftime('%d/%m/%Y')} registrada e salva com sucesso!")
         else:
             st.info("Selecione uma turma para carregar a lista de alunos.")
 
@@ -550,9 +548,9 @@ elif st.session_state.perfil_logado == "professor":
             st.markdown("### Quadro de Lançamentos")
             lista_alunos_notas = carregar_alunos(st.session_state.ctx_turma)
             
-            # Se der erro no carregamento, mostra o aviso, senão constrói a tabela
-            if "Erro interno" in lista_alunos_notas[0] or "vazia ou mal" in lista_alunos_notas[0]:
-                st.error("⚠️ " + lista_alunos_notas[0])
+            # Bloqueio de Segurança para o Diário
+            if not lista_alunos_notas:
+                st.warning("⚠️ Nenhum aluno foi encontrado para esta turma. Por favor, verifique se a planilha 'Alunos' está preenchida corretamente ou clique no botão 'Atualizar Sistema' na barra lateral.")
             else:
                 if st.session_state.ctx_aval == "Numérico (Notas 0 a 10)":
                     df_notas = pd.DataFrame({"ALUNO": lista_alunos_notas, "AV1 (Prova)": [0.0]*len(lista_alunos_notas), "AV2 (Prova)": [0.0]*len(lista_alunos_notas), "AV3 (Prova)": [0.0]*len(lista_alunos_notas), "PE (Trabalho)": [0.0]*len(lista_alunos_notas)})
