@@ -355,18 +355,20 @@ if st.session_state.usuario_logado is None:
             st.markdown("---")
             
             c_pix1, c_pix2 = st.columns([2, 1])
+            
             with c_pix1:
                 st.markdown("##### 1. PIX (Copia e Cola)")
                 st.write("Copie a chave PIX (CPF: ELIUDE BERNARDO DE SOUZA SILVA) abaixo usando o botão de copiar à direita:")
                 st.code("04994867460", language="text") 
                 
                 st.markdown("##### 3. PAGAMENTO NA PLATAFORMA ASAAS")
-                st.write("Acesse o link para oportal de pagamentos seguro.")
-                st.link_button("💳 Abrir Plataforma de ASAAS", "https://api.whatsapp.com/send?phone=5547933007606", use_container_width=True)
+                st.write("Acesse o link para o portal de pagamentos seguro.")
+                st.link_button("💳 Abrir Plataforma ASAAS", "COLE_AQUI_SEU_LINK_DO_ASAAS", use_container_width=True)
                 
-           with c_pix2:
+            with c_pix2:
                 st.markdown("##### 2. QR Code")
-                meu_link_qr_code = "https://i.ibb.co/VY6vZGQb/qr-pix.jpg"
+                # Cole o link direto da sua imagem hospedada abaixo entre as aspas:
+                meu_link_qr_code = "COLE_AQUI_O_LINK_DA_SUA_IMAGEM"
                 st.image(meu_link_qr_code, width=130, caption="Escanear PIX")
                 
         with st.expander("📍 **Localização e Horários**", expanded=False):
