@@ -316,11 +316,42 @@ if st.session_state.usuario_logado is None:
             st.info("Para recuperar o seu acesso, fale com a Secretaria.\n\n📞 (81) 99999-9999\n📧 admin@seea.com.br")
 
     with col_info:
+        # DOCUMENTAÇÃO: CARDS INTERATIVOS (ACORDEÃO)
+        # Substituímos os cartões estáticos por menus expansíveis com ferramentas reais.
         st.markdown("### 📌 Informações Úteis")
-        c_info1, c_info2 = st.columns(2)
-        with c_info1: st.success("💰 **Financeiro**\n\nAcesse boletos e pagamentos de mensalidades de forma prática.")
-        with c_info2: st.warning("📍 **Localização**\n\nVeja como chegar à escola e horários de funcionamento.")
-        st.error("📞 **Contatos Gerais**\n\nSecretaria: (81) 99999-9999\nDiretoria: diretoria@seea.com.br")
+        
+        with st.expander("💰 **Financeiro (Pagamentos e Taxas)**", expanded=False):
+            st.markdown("Realize o pagamento da sua mensalidade de forma rápida e segura escolhendo uma das opções abaixo:")
+            st.markdown("---")
+            
+            c_pix1, c_pix2 = st.columns([2, 1])
+            with c_pix1:
+                st.markdown("##### 1. PIX (Copia e Cola)")
+                st.write("Copie a chave PIX (CNPJ) abaixo usando o botão de copiar à direita:")
+                # O comando st.code gera o botão de copiar automaticamente
+                st.code("12.345.678/0001-90", language="text") 
+                
+                st.markdown("##### 3. Cartão ou Boleto")
+                st.write("Acesse o nosso portal de pagamentos seguro.")
+                st.link_button("💳 Abrir Plataforma de Pagamento", "https://seulinkdepagamento.com.br", use_container_width=True)
+                
+            with c_pix2:
+                st.markdown("##### 2. QR Code")
+                # Substitua este link pelo link da imagem do seu QR Code real
+                url_qr_code_teste = "https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg"
+                st.image(url_qr_code_teste, width=130, caption="Escanear PIX")
+                
+        with st.expander("📍 **Localização e Horários**", expanded=False):
+            st.markdown("**Endereço:** Rua da Educação, 123 - Centro, Vitória de Santo Antão - PE")
+            st.markdown("**Horário de Funcionamento:** Segunda a Sexta, das 07h00 às 18h00.")
+            st.markdown("---")
+            st.link_button("🗺️ Ver Rota no Google Maps", "https://maps.google.com", use_container_width=True)
+            
+        with st.expander("📞 **Contatos e Suporte**", expanded=False):
+            st.markdown("Precisando de ajuda? Nossa equipe está pronta para atender:")
+            st.markdown("- **Secretaria (WhatsApp):** (81) 99999-9999")
+            st.markdown("- **Diretoria:** diretoria@seea.com.br")
+            st.markdown("- **Suporte Técnico:** suporte@seea.com.br")
 
 elif st.session_state.perfil_logado == "aluno":
     st.markdown(f"<h1 style='text-align: center;'>🎓 Portal do Aluno</h1>", unsafe_allow_html=True)
@@ -416,8 +447,6 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
             if total_registros > 0:
                 freq_media_pct = round((total_presencas / total_registros) * 100)
                 
-            # DOCUMENTAÇÃO: CORREÇÃO DO ERRO NAMEERROR
-            # Substituímos a variável incorreta para que o filtro funcione com a tabela principal corretamente
             if 'data' in df_freq_calc.columns:
                 df_hoje = df_freq_calc[df_freq_calc['data'].astype(str) == hoje_str]
                 presentes_hoje = len(df_hoje[df_hoje['status'].astype(str).str.upper() == 'P'])
@@ -536,13 +565,11 @@ elif st.session_state.perfil_logado == "professor":
             st.markdown(f"<h1 style='text-align:center;'>Bom dia, {st.session_state.usuario_logado.split()[0]}!</h1>", unsafe_allow_html=True)
             st.markdown('<div class="painel-selecao">', unsafe_allow_html=True)
             st.text_input("👤 Professor", st.session_state.usuario_logado, disabled=True)
-            
             c_sel1, c_sel2 = st.columns(2)
             with c_sel1: sel_turma = st.selectbox("👥 Turma", ["Selecione..."] + lista_turmas)
             with c_sel2: sel_disc = st.selectbox("📄 Disciplina", lista_disciplinas)
             
             sel_aval = st.selectbox("⚖️ Sistema de Avaliação", ["Selecione...", "Numérico (Notas 0 a 10)", "Conceitual (Ótimo, Bom, Regular)"])
-            
             st.markdown('</div>', unsafe_allow_html=True)
             
             if sel_turma != "Selecione..." and sel_disc != "Selecione..." and sel_aval != "Selecione...":
@@ -602,10 +629,8 @@ elif st.session_state.perfil_logado == "professor":
                     df_editado = st.data_editor(df_notas, hide_index=True, use_container_width=True, column_config={"ALUNO": st.column_config.TextColumn(disabled=True), "I Unidade": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "II Unidade": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "III Unidade": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "IV Unidade": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f")})
                     
                     df_resultado = df_editado.copy()
-                    
                     df_resultado["MÉDIA FINAL"] = df_resultado[["I Unidade", "II Unidade", "III Unidade", "IV Unidade"]].sum(axis=1) / 4
                     df_resultado["MÉDIA FINAL"] = df_resultado["MÉDIA FINAL"].round(1)
-                    
                     df_resultado["SITUAÇÃO"] = df_resultado["MÉDIA FINAL"].apply(lambda m: "🟢 APROVADO" if m >= 7.0 else ("🟡 EM ANDAMENTO/RECUPERAÇÃO" if m > 0.0 else "⚪ PENDENTE"))
                     
                     st.dataframe(df_resultado[["ALUNO", "MÉDIA FINAL", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
@@ -629,7 +654,6 @@ elif st.session_state.perfil_logado == "professor":
                     
                     df_resultado = df_editado.copy()
                     df_resultado["MÉDIA FINAL"] = "-" 
-                    
                     def calc_situacao(row):
                         ultimo_conc = row["IV Unidade"] if row["IV Unidade"] != "-" else (row["III Unidade"] if row["III Unidade"] != "-" else (row["II Unidade"] if row["II Unidade"] != "-" else row["I Unidade"]))
                         return "🟢 APROVADO" if ultimo_conc in ["Ótimo", "Bom"] else ("🟡 ATENÇÃO" if ultimo_conc == "Regular" else "⚪ PENDENTE")
