@@ -369,15 +369,15 @@ if st.session_state.usuario_logado is None:
                 url_qr_code_teste = "https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg"
                 st.image(url_qr_code_teste, width=130, caption="Escanear PIX")
                 
-        with st.expander("📍 **Localização e Horários**", expanded=False):
-            st.markdown("**Endereço:** Rua da Educação, 123 - Centro, Vitória de Santo Antão - PE")
-            st.markdown("**Horário de Funcionamento:** Segunda a Sexta, das 07h00 às 18h00.")
+        with st.expander("📍 **Nossa localização**", expanded=False):
+            st.markdown("**Endereço:** Endereço: Rua Antônio José de Paiva, S/N Loteamento Real Vitória - Vitória de Santo Antão - PE")
+            st.markdown("**Ponto de Referência:** 2ª rua à direita após a antiga Escola do Rotary (entrar ao lado da Igreja Assembleia de Deus).")
             st.markdown("---")
             st.link_button("🗺️ Ver Rota no Google Maps", "https://maps.google.com", use_container_width=True)
             
         with st.expander("📞 **Contatos e Suporte**", expanded=False):
             st.markdown("Precisando de ajuda? Nossa equipe está pronta para atender:")
-            st.markdown("- **Secretaria (WhatsApp):** (81) 99999-9999")
+            st.markdown("- **Secretaria (WhatsApp):** (81) 98328-8495")
             st.markdown("- **Diretoria:** diretoria@seea.com.br")
             st.markdown("- **Suporte Técnico:** suporte@seea.com.br")
 
