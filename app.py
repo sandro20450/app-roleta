@@ -373,7 +373,7 @@ if st.session_state.usuario_logado is None:
             st.markdown("**Endereço:** Endereço: Rua Antônio José de Paiva, S/N Loteamento Real Vitória - Vitória de Santo Antão - PE")
             st.markdown("**Ponto de Referência:** 2ª rua à direita após a antiga Escola do Rotary (entrar ao lado da Igreja Assembleia de Deus).")
             st.markdown("---")
-            st.link_button("🗺️ Ver Rota no Google Maps", "https://maps.google.com", use_container_width=True)
+            st.link_button("🗺️ Ver Rota no Google Maps", "https://www.google.com/maps/place/R.+Nossa+Sra.+da+Aparecida,+396+-+L%C3%ADdia+Queiroz,+Vit%C3%B3ria+de+Santo+Ant%C3%A3o+-+PE,+55614-700/@-8.1252024,-35.2906503,17z/data=!4m16!1m9!3m8!1s0x7aa54bd26c5d1c9:0x8f8f9c6e05c506a1!2sR.+Nossa+Sra.+da+Aparecida,+396+-+L%C3%ADdia+Queiroz,+Vit%C3%B3ria+de+Santo+Ant%C3%A3o+-+PE,+55614-700!3b1!8m2!3d-8.1253253!4d-35.2907675!10e5!16s%2Fg%2F11hpy78k5b!3m5!1s0x7aa54bd26c5d1c9:0x8f8f9c6e05c506a1!8m2!3d-8.1253253!4d-35.2907675!16s%2Fg%2F11hpy78k5b?entry=ttu&g_ep=EgoyMDI1MDYxMS4wIKXMDSoASAFQAw%3D%3D", use_container_width=True)
             
         with st.expander("📞 **Contatos e Suporte**", expanded=False):
             st.markdown("Precisando de ajuda? Nossa equipe está pronta para atender:")
