@@ -23,6 +23,35 @@ st.markdown("""
     footer { display: none !important; visibility: hidden !important; }
     [data-testid="stSidebar"] { background-color: #e8eaed !important; border-right: 1px solid #cccccc; }
     
+    /* DOCUMENTAÇÃO: AJUSTE DE CONTRASTE DOS EXPANDERS E BOTÕES */
+    /* 1. Título dos Menus Expansíveis */
+    [data-testid="stExpander"] details summary {
+        background-color: #e8eaed !important; 
+        color: #1e3d59 !important;
+        border-radius: 5px;
+    }
+    [data-testid="stExpander"] details summary p {
+        color: #1e3d59 !important;
+        font-weight: bold;
+    }
+    /* 2. Caixa do Código PIX */
+    [data-testid="stCodeBlock"] {
+        background-color: #e8eaed !important;
+    }
+    [data-testid="stCodeBlock"] span {
+        color: #004d99 !important;
+        font-weight: bold;
+    }
+    /* 3. Botões de Link Externo (Plataforma de Pagamento) */
+    a[data-testid="stLinkButton"] button {
+        background-color: #004d99 !important;
+        color: #ffffff !important;
+        border: none !important;
+    }
+    a[data-testid="stLinkButton"] button p {
+        color: #ffffff !important;
+    }
+
     .stApp { background-color: #f4f7f6; }
     .stApp p, .stApp span, .stApp label, .stApp div[data-testid="stMarkdownContainer"] { color: #1e3d59 !important; }
     h1, h2, h3, h4, h5 { color: #004d99 !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -316,8 +345,6 @@ if st.session_state.usuario_logado is None:
             st.info("Para recuperar o seu acesso, fale com a Secretaria.\n\n📞 (81) 99999-9999\n📧 admin@seea.com.br")
 
     with col_info:
-        # DOCUMENTAÇÃO: CARDS INTERATIVOS (ACORDEÃO)
-        # Substituímos os cartões estáticos por menus expansíveis com ferramentas reais.
         st.markdown("### 📌 Informações Úteis")
         
         with st.expander("💰 **Financeiro (Pagamentos e Taxas)**", expanded=False):
@@ -328,7 +355,6 @@ if st.session_state.usuario_logado is None:
             with c_pix1:
                 st.markdown("##### 1. PIX (Copia e Cola)")
                 st.write("Copie a chave PIX (CNPJ) abaixo usando o botão de copiar à direita:")
-                # O comando st.code gera o botão de copiar automaticamente
                 st.code("12.345.678/0001-90", language="text") 
                 
                 st.markdown("##### 3. Cartão ou Boleto")
@@ -337,7 +363,6 @@ if st.session_state.usuario_logado is None:
                 
             with c_pix2:
                 st.markdown("##### 2. QR Code")
-                # Substitua este link pelo link da imagem do seu QR Code real
                 url_qr_code_teste = "https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg"
                 st.image(url_qr_code_teste, width=130, caption="Escanear PIX")
                 
@@ -362,7 +387,7 @@ elif st.session_state.perfil_logado == "aluno":
         <div style='background-color:#e6f2ff; padding:15px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border: 1px solid #b3d9ff;'>
             <div>
                 <span style='font-size:1.2em; color:#1e3d59 !important;'>👤 <b>{st.session_state.usuario_logado}</b></span><br>
-                <span style='color:#004d99 !important; font-weight:bold;'>👥 Turma: {dados_do_aluno.get('turma', 'N/A')} &nbsp;|&nbsp; 🏫 Ensino: {dados_do_aluno.get('ensino', 'N/A')} &nbsp;|&nbsp; ⏰ Turno: {dados_do_aluno.get('turno', 'N/A')}</span>
+                <span style='color:#004d99 !important; font-weight:bold;'>👥 Turma: {dados_do_aluno.get('turma', 'N/A')}  |  🏫 Ensino: {dados_do_aluno.get('ensino', 'N/A')}  |  ⏰ Turno: {dados_do_aluno.get('turno', 'N/A')}</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -448,7 +473,7 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
                 freq_media_pct = round((total_presencas / total_registros) * 100)
                 
             if 'data' in df_freq_calc.columns:
-                df_hoje = df_freq_calc[df_freq_calc['data'].astype(str) == hoje_str]
+                df_hoje = df_freq_calc[df_hoje['data'].astype(str) == hoje_str]
                 presentes_hoje = len(df_hoje[df_hoje['status'].astype(str).str.upper() == 'P'])
                 ausentes_hoje = len(df_hoje[df_hoje['status'].astype(str).str.upper() == 'F'])
 
@@ -565,11 +590,13 @@ elif st.session_state.perfil_logado == "professor":
             st.markdown(f"<h1 style='text-align:center;'>Bom dia, {st.session_state.usuario_logado.split()[0]}!</h1>", unsafe_allow_html=True)
             st.markdown('<div class="painel-selecao">', unsafe_allow_html=True)
             st.text_input("👤 Professor", st.session_state.usuario_logado, disabled=True)
+            
             c_sel1, c_sel2 = st.columns(2)
             with c_sel1: sel_turma = st.selectbox("👥 Turma", ["Selecione..."] + lista_turmas)
             with c_sel2: sel_disc = st.selectbox("📄 Disciplina", lista_disciplinas)
             
             sel_aval = st.selectbox("⚖️ Sistema de Avaliação", ["Selecione...", "Numérico (Notas 0 a 10)", "Conceitual (Ótimo, Bom, Regular)"])
+            
             st.markdown('</div>', unsafe_allow_html=True)
             
             if sel_turma != "Selecione..." and sel_disc != "Selecione..." and sel_aval != "Selecione...":
@@ -586,7 +613,7 @@ elif st.session_state.perfil_logado == "professor":
             <div style='background-color:#e6f2ff; padding:15px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border: 1px solid #b3d9ff;'>
                 <div>
                     <span style='color:#004d99 !important; font-weight:bold; font-size:0.9em;'>VISÃO ANUAL COMPLETA</span><br>
-                    <span style='font-size:1.2em; color:#1e3d59 !important;'>👤 <b>{st.session_state.usuario_logado}</b> &nbsp;|&nbsp; 👥 {st.session_state.ctx_turma} &nbsp;|&nbsp; 📄 {st.session_state.ctx_disc} &nbsp;|&nbsp; ⚖️ {st.session_state.ctx_aval}</span>
+                    <span style='font-size:1.2em; color:#1e3d59 !important;'>👤 <b>{st.session_state.usuario_logado}</b>  |  👥 {st.session_state.ctx_turma}  |  📄 {st.session_state.ctx_disc}  |  ⚖️ {st.session_state.ctx_aval}</span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -629,8 +656,10 @@ elif st.session_state.perfil_logado == "professor":
                     df_editado = st.data_editor(df_notas, hide_index=True, use_container_width=True, column_config={"ALUNO": st.column_config.TextColumn(disabled=True), "I Unidade": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "II Unidade": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "III Unidade": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "IV Unidade": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f")})
                     
                     df_resultado = df_editado.copy()
+                    
                     df_resultado["MÉDIA FINAL"] = df_resultado[["I Unidade", "II Unidade", "III Unidade", "IV Unidade"]].sum(axis=1) / 4
                     df_resultado["MÉDIA FINAL"] = df_resultado["MÉDIA FINAL"].round(1)
+                    
                     df_resultado["SITUAÇÃO"] = df_resultado["MÉDIA FINAL"].apply(lambda m: "🟢 APROVADO" if m >= 7.0 else ("🟡 EM ANDAMENTO/RECUPERAÇÃO" if m > 0.0 else "⚪ PENDENTE"))
                     
                     st.dataframe(df_resultado[["ALUNO", "MÉDIA FINAL", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
