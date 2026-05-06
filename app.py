@@ -364,10 +364,11 @@ if st.session_state.usuario_logado is None:
                 st.write("Acesse o link para oportal de pagamentos seguro.")
                 st.link_button("💳 Abrir Plataforma de ASAAS", "https://api.whatsapp.com/send?phone=5547933007606", use_container_width=True)
                 
-            with c_pix2:
+           with c_pix2:
                 st.markdown("##### 2. QR Code")
-                url_qr_code_teste = "https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg"
-                st.image(url_qr_code_teste, width=130, caption="Escanear PIX")
+                # Cole o link direto da sua imagem hospedada aqui embaixo:
+                meu_link_qr_code = "https://i.ibb.co/VY6vZGQb/qr-pix.jpg"
+                st.image(meu_link_qr_code, width=130, caption="Escanear PIX")
                 
         with st.expander("📍 **Localização e Horários**", expanded=False):
             st.markdown("**Endereço:** Rua da Educação, 123 - Centro, Vitória de Santo Antão - PE")
