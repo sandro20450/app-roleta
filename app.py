@@ -70,10 +70,13 @@ def get_gspread_client():
         return gspread.authorize(creds)
     return None
 
-# DOCUMENTAÇÃO: MOTOR DE LEITURA BLINDADO
-# Substituímos get_all_records (que crasha com colunas vazias) por get_all_values (lê tudo bruto e formata com segurança)
+# DOCUMENTAÇÃO: MOTOR DE MEMÓRIA (CACHE)
+# O comando @st.cache_data guarda a tabela na memória RAM do servidor por 5 minutos (300 segundos).
+# Isto impede que o Google bloqueie o nosso sistema quando digita notas muito rapidamente.
+@st.cache_data(ttl=300, show_spinner=False)
 def carregar_tabela_completa(nome_aba):
     try:
+        # A ligação à nuvem precisa ser chamada dentro do bloco de cache
         gc = get_gspread_client()
         if gc:
             ws = gc.open("Base_SEEA").worksheet(nome_aba)
@@ -82,10 +85,15 @@ def carregar_tabela_completa(nome_aba):
             if not dados:
                 if nome_aba == "Avisos": return pd.DataFrame(columns=["tipo", "aluno", "mensagem", "data"])
                 return pd.DataFrame()
+            
+            # Cria a tabela
             if len(dados) == 1:
-                return pd.DataFrame(columns=dados[0])
-                
-            df = pd.DataFrame(dados[1:], columns=dados[0])
+                df = pd.DataFrame(columns=dados[0])
+            else:
+                df = pd.DataFrame(dados[1:], columns=dados[0])
+            
+            # Blindagem Extra: Põe todas as colunas em minúsculas e sem espaços inúteis
+            df.columns = df.columns.astype(str).str.strip().str.lower()
             return df
     except Exception as e:
         return pd.DataFrame()
@@ -96,7 +104,6 @@ def carregar_usuarios():
         if not df.empty and 'usuario' in df.columns and 'senha' in df.columns:
             usuarios = {}
             for _, row in df.iterrows():
-                # Ignora linhas totalmente vazias
                 if str(row.get('usuario', '')).strip() != "":
                     usuarios[str(row['usuario']).strip()] = { 
                         "senha": str(row.get('senha', '')).strip(), 
@@ -112,7 +119,6 @@ def carregar_turmas():
     try:
         df = carregar_tabela_completa("Alunos")
         if not df.empty and 'turma' in df.columns:
-            # Extrai nomes de turmas removendo espaços falsos no final e eliminando vazios
             turmas = df['turma'].astype(str).str.strip().unique().tolist()
             turmas = [t for t in turmas if t != ""]
             return sorted(turmas) if turmas else ["Selecione..."]
@@ -123,26 +129,30 @@ def carregar_turmas():
 def carregar_alunos(turma):
     try:
         df = carregar_tabela_completa("Alunos")
-        if not df.empty and 'turma' in df.columns and 'nome_aluno' in df.columns:
-            # Limpa a turma recebida e a coluna de turmas para comparação exata (Sanitização)
-            turma_limpa = str(turma).strip()
-            df_filtrado = df[df['turma'].astype(str).str.strip() == turma_limpa]
+        if not df.empty and 'turma' in df.columns:
+            # Reconhece "nome_aluno" ou apenas "aluno"
+            col_nome = 'nome_aluno' if 'nome_aluno' in df.columns else ('aluno' if 'aluno' in df.columns else None)
             
-            # Puxa os nomes dos alunos, removendo espaços e itens vazios
-            alunos = df_filtrado['nome_aluno'].astype(str).str.strip().tolist()
-            alunos = [a for a in alunos if a != ""]
-            
-            return alunos if alunos else ["Nenhum aluno cadastrado nesta turma."]
+            if col_nome:
+                turma_limpa = str(turma).strip()
+                df_filtrado = df[df['turma'].astype(str).str.strip() == turma_limpa]
+                
+                alunos = df_filtrado[col_nome].astype(str).str.strip().tolist()
+                alunos = [a for a in alunos if a != ""]
+                
+                return alunos if alunos else ["Nenhum aluno cadastrado nesta turma."]
         return ["Tabela de alunos vazia ou mal formatada."]
     except Exception as e:
-        # Se der erro, mostra exatamente o porquê na tabela para facilitar manutenção
         return [f"Erro interno do sistema: {str(e)}"]
 
 def buscar_dados_aluno(nome_aluno):
     try:
         df = carregar_tabela_completa("Alunos")
-        if not df.empty and 'nome_aluno' in df.columns:
-            aluno_row = df[df['nome_aluno'].astype(str).str.strip() == str(nome_aluno).strip()]
+        # Procura coluna de nome flexível
+        col_nome = 'nome_aluno' if 'nome_aluno' in df.columns else ('aluno' if 'aluno' in df.columns else None)
+        
+        if not df.empty and col_nome:
+            aluno_row = df[df[col_nome].astype(str).str.strip() == str(nome_aluno).strip()]
             if not aluno_row.empty:
                 return aluno_row.iloc[0].to_dict()
     except Exception as e:
@@ -152,14 +162,14 @@ def buscar_dados_aluno(nome_aluno):
 def carregar_notas_aluno(nome_aluno):
     try:
         df = carregar_tabela_completa("Notas")
-        if not df.empty:
-            df.columns = df.columns.astype(str).str.strip().str.lower()
-            if 'aluno' in df.columns:
-                return df[df['aluno'].astype(str).str.strip() == str(nome_aluno).strip()]
+        if not df.empty and 'aluno' in df.columns:
+            return df[df['aluno'].astype(str).str.strip() == str(nome_aluno).strip()]
         return pd.DataFrame()
     except: 
         return pd.DataFrame() 
 
+# DOCUMENTAÇÃO: LIMPEZA DE CACHE APÓS GUARDAR
+# Sempre que guardamos algo novo, forçamos o sistema a limpar a memória para atualizar a visualização.
 def salvar_notas_bd(turma, disciplina, bimestre, df_resultados):
     try:
         gc = get_gspread_client()
@@ -170,6 +180,8 @@ def salvar_notas_bd(turma, disciplina, bimestre, df_resultados):
                 linha = [turma, disciplina, bimestre, row["ALUNO"], str(row["MÉDIA FINAL"]), row["SITUAÇÃO"], str(row["CONCEITO"])]
                 novas_linhas.append(linha)
             ws.append_rows(novas_linhas, value_input_option="USER_ENTERED")
+            
+            st.cache_data.clear() # <- Invalida a memória
             return True
     except Exception as e:
         st.error(f"Erro ao salvar no banco de dados: {e}")
@@ -185,6 +197,8 @@ def salvar_frequencia_bd(data_aula, turma, assunto, lista_presenca):
                 linha = [str(data_aula), turma, item['aluno'], item['status'], assunto]
                 novas_linhas.append(linha)
             ws.append_rows(novas_linhas, value_input_option="USER_ENTERED")
+            
+            st.cache_data.clear() # <- Invalida a memória
             return True
     except Exception as e:
         st.error(f"Erro ao salvar frequência no banco: {e}")
@@ -199,6 +213,8 @@ def sincronizar_aba_completa(nome_aba, df_editado):
             dados_lista = [df_editado.columns.values.tolist()] + df_editado.values.tolist()
             ws.clear()
             ws.update(values=dados_lista, range_name="A1")
+            
+            st.cache_data.clear() # <- Invalida a memória
             return True
     except Exception as e:
         st.error(f"Erro ao sincronizar a aba {nome_aba}: {e}")
@@ -534,25 +550,29 @@ elif st.session_state.perfil_logado == "professor":
             st.markdown("### Quadro de Lançamentos")
             lista_alunos_notas = carregar_alunos(st.session_state.ctx_turma)
             
-            if st.session_state.ctx_aval == "Numérico (Notas 0 a 10)":
-                df_notas = pd.DataFrame({"ALUNO": lista_alunos_notas, "AV1 (Prova)": [0.0]*len(lista_alunos_notas), "AV2 (Prova)": [0.0]*len(lista_alunos_notas), "AV3 (Prova)": [0.0]*len(lista_alunos_notas), "PE (Trabalho)": [0.0]*len(lista_alunos_notas)})
-                df_editado = st.data_editor(df_notas, hide_index=True, use_container_width=True, column_config={"ALUNO": st.column_config.TextColumn(disabled=True), "AV1 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "AV2 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "AV3 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "PE (Trabalho)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f")})
-                df_resultado = df_editado.copy()
-                df_resultado["MÉDIA FINAL"] = df_resultado[["AV1 (Prova)", "AV2 (Prova)", "AV3 (Prova)", "PE (Trabalho)"]].mean(axis=1).round(1)
-                df_resultado["SITUAÇÃO"] = df_resultado["MÉDIA FINAL"].apply(lambda m: "🟢 APROVADO" if m >= 7.0 else ("🟡 RECUPERAÇÃO" if m >= 5.0 else "🔴 REPROVADO"))
-                df_resultado["CONCEITO"] = "-" 
-                st.dataframe(df_resultado[["ALUNO", "MÉDIA FINAL", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
+            # Se der erro no carregamento, mostra o aviso, senão constrói a tabela
+            if "Erro interno" in lista_alunos_notas[0] or "vazia ou mal" in lista_alunos_notas[0]:
+                st.error("⚠️ " + lista_alunos_notas[0])
             else:
-                df_notas = pd.DataFrame({"ALUNO": lista_alunos_notas, "CONCEITO": ["-"]*len(lista_alunos_notas)})
-                df_editado = st.data_editor(df_notas, hide_index=True, use_container_width=True, column_config={"ALUNO": st.column_config.TextColumn(disabled=True), "CONCEITO": st.column_config.SelectboxColumn("Conceito Qualitativo", options=["-", "Ótimo", "Bom", "Regular"], required=True)})
-                df_resultado = df_editado.copy()
-                df_resultado["MÉDIA FINAL"] = "-" 
-                df_resultado["SITUAÇÃO"] = df_resultado["CONCEITO"].apply(lambda c: "🟢 APROVADO" if c in ["Ótimo", "Bom"] else ("🟡 ATENÇÃO" if c == "Regular" else "⚪ PENDENTE"))
-                st.dataframe(df_resultado[["ALUNO", "CONCEITO", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
+                if st.session_state.ctx_aval == "Numérico (Notas 0 a 10)":
+                    df_notas = pd.DataFrame({"ALUNO": lista_alunos_notas, "AV1 (Prova)": [0.0]*len(lista_alunos_notas), "AV2 (Prova)": [0.0]*len(lista_alunos_notas), "AV3 (Prova)": [0.0]*len(lista_alunos_notas), "PE (Trabalho)": [0.0]*len(lista_alunos_notas)})
+                    df_editado = st.data_editor(df_notas, hide_index=True, use_container_width=True, column_config={"ALUNO": st.column_config.TextColumn(disabled=True), "AV1 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "AV2 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "AV3 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "PE (Trabalho)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f")})
+                    df_resultado = df_editado.copy()
+                    df_resultado["MÉDIA FINAL"] = df_resultado[["AV1 (Prova)", "AV2 (Prova)", "AV3 (Prova)", "PE (Trabalho)"]].mean(axis=1).round(1)
+                    df_resultado["SITUAÇÃO"] = df_resultado["MÉDIA FINAL"].apply(lambda m: "🟢 APROVADO" if m >= 7.0 else ("🟡 RECUPERAÇÃO" if m >= 5.0 else "🔴 REPROVADO"))
+                    df_resultado["CONCEITO"] = "-" 
+                    st.dataframe(df_resultado[["ALUNO", "MÉDIA FINAL", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
+                else:
+                    df_notas = pd.DataFrame({"ALUNO": lista_alunos_notas, "CONCEITO": ["-"]*len(lista_alunos_notas)})
+                    df_editado = st.data_editor(df_notas, hide_index=True, use_container_width=True, column_config={"ALUNO": st.column_config.TextColumn(disabled=True), "CONCEITO": st.column_config.SelectboxColumn("Conceito Qualitativo", options=["-", "Ótimo", "Bom", "Regular"], required=True)})
+                    df_resultado = df_editado.copy()
+                    df_resultado["MÉDIA FINAL"] = "-" 
+                    df_resultado["SITUAÇÃO"] = df_resultado["CONCEITO"].apply(lambda c: "🟢 APROVADO" if c in ["Ótimo", "Bom"] else ("🟡 ATENÇÃO" if c == "Regular" else "⚪ PENDENTE"))
+                    st.dataframe(df_resultado[["ALUNO", "CONCEITO", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
 
-            if st.button("💾 Salvar Diário de Notas no Banco de Dados", type="primary", use_container_width=True):
-                with st.spinner("Conectando ao servidor..."):
-                    if salvar_notas_bd(st.session_state.ctx_turma, st.session_state.ctx_disc, st.session_state.ctx_bim, df_resultado): st.success("✅ Diário salvo com sucesso!")
+                if st.button("💾 Salvar Diário de Notas no Banco de Dados", type="primary", use_container_width=True):
+                    with st.spinner("Conectando ao servidor..."):
+                        if salvar_notas_bd(st.session_state.ctx_turma, st.session_state.ctx_disc, st.session_state.ctx_bim, df_resultado): st.success("✅ Diário salvo com sucesso!")
 
     with aba_ia:
         st.markdown("<h2>🤖 Fábrica de Avaliações com IA</h2>", unsafe_allow_html=True)
