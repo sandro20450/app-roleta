@@ -355,21 +355,19 @@ if st.session_state.usuario_logado is None:
             st.markdown("---")
             
             c_pix1, c_pix2 = st.columns([2, 1])
-            
             with c_pix1:
                 st.markdown("##### 1. PIX (Copia e Cola)")
-                st.write("Copie a chave PIX (CPF: ELIUDE BERNARDO DE SOUZA SILVA) abaixo usando o botão de copiar à direita:")
-                st.code("04994867460", language="text") 
+                st.write("Copie a chave PIX (CNPJ) abaixo usando o botão de copiar à direita:")
+                st.code("12.345.678/0001-90", language="text") 
                 
-                st.markdown("##### 3. PAGAMENTO NA PLATAFORMA ASAAS")
-                st.write("Acesse o link para o portal de pagamentos seguro.")
-                st.link_button("💳 Abrir Plataforma ASAAS", "COLE_AQUI_SEU_LINK_DO_ASAAS", use_container_width=True)
+                st.markdown("##### 3. Cartão ou Boleto")
+                st.write("Acesse o nosso portal de pagamentos seguro.")
+                st.link_button("💳 Abrir Plataforma de Pagamento", "https://seulinkdepagamento.com.br", use_container_width=True)
                 
             with c_pix2:
                 st.markdown("##### 2. QR Code")
-                # Cole o link direto da sua imagem hospedada abaixo entre as aspas:
-                meu_link_qr_code = "COLE_AQUI_O_LINK_DA_SUA_IMAGEM"
-                st.image(meu_link_qr_code, width=130, caption="Escanear PIX")
+                url_qr_code_teste = "https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg"
+                st.image(url_qr_code_teste, width=130, caption="Escanear PIX")
                 
         with st.expander("📍 **Localização e Horários**", expanded=False):
             st.markdown("**Endereço:** Rua da Educação, 123 - Centro, Vitória de Santo Antão - PE")
