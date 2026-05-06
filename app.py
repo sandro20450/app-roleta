@@ -73,7 +73,6 @@ def carregar_alunos(turma):
     except:
         return ["Erro ao carregar alunos"]
 
-# NOVA FUNÇÃO: Busca os dados específicos do aluno logado na aba "Alunos"
 def buscar_dados_aluno(nome_aluno):
     try:
         gc = get_gspread_client()
@@ -82,10 +81,52 @@ def buscar_dados_aluno(nome_aluno):
             records = ws.get_all_records()
             for r in records:
                 if str(r['nome_aluno']).strip() == nome_aluno.strip():
-                    return r # Retorna os dados (turma, turno, etc.) se encontrar o aluno
+                    return r 
     except Exception as e:
         return None
     return None
+
+# DOCUMENTAÇÃO: Nova função para salvar as notas na aba "Notas" do Google Sheets
+def salvar_notas_bd(turma, disciplina, bimestre, df_resultados):
+    try:
+        gc = get_gspread_client()
+        if gc:
+            ws = gc.open("Base_SEEA").worksheet("Notas")
+            
+            # Prepara os dados para inserir na planilha
+            novas_linhas = []
+            for index, row in df_resultados.iterrows():
+                linha = [
+                    turma, 
+                    disciplina, 
+                    bimestre, 
+                    row["ALUNO"], 
+                    str(row["MÉDIA FINAL"]), 
+                    row["SITUAÇÃO"],
+                    row["CONCEITO"] # O novo sistema de avaliação conceitual
+                ]
+                novas_linhas.append(linha)
+                
+            # Adiciona as linhas no final da planilha de Notas
+            ws.append_rows(novas_linhas, value_input_option="USER_ENTERED")
+            return True
+    except Exception as e:
+        st.error(f"Erro ao salvar no banco de dados: {e}")
+        return False
+
+# DOCUMENTAÇÃO: Nova função para o Painel do Aluno ler as suas próprias notas
+def carregar_notas_aluno(nome_aluno):
+    try:
+        gc = get_gspread_client()
+        if gc:
+            ws = gc.open("Base_SEEA").worksheet("Notas")
+            records = ws.get_all_records()
+            
+            # Filtra apenas as notas que pertencem ao aluno logado
+            notas_do_aluno = [r for r in records if str(r['aluno']).strip() == nome_aluno.strip()]
+            return pd.DataFrame(notas_do_aluno)
+    except Exception as e:
+        return pd.DataFrame() # Retorna vazio em caso de erro ou sem dados
 
 # =============================================================================
 # --- 3. CONFIGURAÇÃO DA INTELIGÊNCIA ARTIFICIAL (GEMINI) ---
@@ -135,18 +176,15 @@ with st.sidebar:
     else:
         st.markdown(f"""<div style='background-color: #d4edda; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 1px solid #c3e6cb;'><span style='color: #155724 !important; font-weight: bold; font-size: 1.1em;'>👤 {st.session_state.usuario_logado}</span></div>""", unsafe_allow_html=True)
         
-        # Menu adaptado para Professor
         if st.session_state.perfil_logado == "professor":
             st.markdown("<span style='color:#888; font-size:0.8em; font-weight:bold;'>PEDAGÓGICO</span>", unsafe_allow_html=True)
             st.button("📖 Diário de Classe", use_container_width=True)
             st.button("🤖 Gerador de Provas", use_container_width=True)
             
-        # Menu adaptado para Administração
         elif st.session_state.perfil_logado in ["admin", "diretoria"]:
             st.markdown("<span style='color:#888; font-size:0.8em; font-weight:bold;'>ADMINISTRAÇÃO</span>", unsafe_allow_html=True)
             st.button("⚙️ Painel Geral", use_container_width=True)
             
-        # NOVO: Menu adaptado para o Aluno / Responsável
         elif st.session_state.perfil_logado == "aluno":
             st.markdown("<span style='color:#888; font-size:0.8em; font-weight:bold;'>ÁREA DO ALUNO</span>", unsafe_allow_html=True)
             st.button("📊 Meu Boletim", use_container_width=True)
@@ -159,7 +197,6 @@ with st.sidebar:
 # --- 6. ÁREA PRINCIPAL (FRONT-END) ---
 # =============================================================================
 
-# Tela Inicial (Deslogado)
 if st.session_state.usuario_logado is None:
     st.markdown("<h1 style='text-align: center;'>Bem-vindo ao Portal SEEA</h1>", unsafe_allow_html=True)
     col1, col2, col3, col4 = st.columns(4)
@@ -168,11 +205,12 @@ if st.session_state.usuario_logado is None:
     with col3: st.warning("📍 **Localização**\n\nVeja como chegar à escola.")
     with col4: st.error("📞 **Contatos**\n\nFale com a secretaria.")
 
-# NOVO: Painel exclusivo do Aluno / Responsável
+# ---------------------------------------------------------
+# PAINEL DO ALUNO (AGORA PUXANDO DO BANCO DE DADOS)
+# ---------------------------------------------------------
 elif st.session_state.perfil_logado == "aluno":
     st.markdown(f"<h1 style='text-align: center;'>🎓 Portal do Aluno</h1>", unsafe_allow_html=True)
     
-    # Busca as informações do aluno logado na planilha
     dados_do_aluno = buscar_dados_aluno(st.session_state.usuario_logado)
     
     if dados_do_aluno:
@@ -187,49 +225,33 @@ elif st.session_state.perfil_logado == "aluno":
     else:
         st.warning("⚠️ Dados da turma não encontrados. Por favor, contacte a secretaria.")
 
-    # Criação das Abas de navegação para o Aluno
     aba_boletim, aba_avisos = st.tabs(["📊 Boletim de Notas", "📢 Mural de Avisos"])
     
     with aba_boletim:
-        st.markdown("### 📝 Desempenho Académico - 2026")
-        st.write("Acompanhe as notas do aluno por disciplina em cada bimestre.")
+        st.markdown("### 📝 Desempenho Acadêmico")
+        st.write("Acompanhe as notas ou conceitos lançados pelos professores.")
         
-        # Tabela simulada de notas (Até conectarmos com o banco de notas oficial)
-        df_boletim = pd.DataFrame({
-            "Disciplina": ["Língua Portuguesa", "Matemática", "História", "Ciências", "Geografia"],
-            "1º Bim": [8.5, 7.0, 9.0, 8.0, 7.5],
-            "2º Bim": [7.5, 6.5, 8.5, 7.5, 8.0],
-            "3º Bim": ["-", "-", "-", "-", "-"],
-            "4º Bim": ["-", "-", "-", "-", "-"],
-            "Média Parcial": [8.0, 6.75, 8.75, 7.75, 7.75],
-            "Situação Parcial": ["🟢 OK", "🟡 ATENÇÃO", "🟢 OK", "🟢 OK", "🟢 OK"]
-        })
+        # Lê as notas reais da aba 'Notas' da planilha
+        df_notas_aluno = carregar_notas_aluno(st.session_state.usuario_logado)
         
-        st.dataframe(df_boletim, hide_index=True, use_container_width=True)
-        st.caption("Legenda: 🟢 OK (Média >= 7.0) | 🟡 ATENÇÃO (Média < 7.0) | 🔴 CRÍTICO (Média < 5.0)")
+        if not df_notas_aluno.empty:
+            # Seleciona as colunas que importam para o aluno ver
+            df_boletim_visual = df_notas_aluno[['disciplina', 'bimestre', 'media', 'conceito', 'situacao']]
+            df_boletim_visual.columns = ['Disciplina', 'Bimestre', 'Média Final', 'Conceito', 'Situação']
+            st.dataframe(df_boletim_visual, hide_index=True, use_container_width=True)
+        else:
+            st.info("📌 O boletim está vazio. Os professores ainda não lançaram notas neste período.")
 
     with aba_avisos:
         st.markdown("### 📢 Quadro de Comunicações")
         st.write("Fique atento aos prazos e comunicados importantes da escola.")
-        
-        # Avisos (Podem ser puxados de uma nova aba na planilha no futuro)
         st.markdown("""
         <div class='aviso-card'>
             <strong>📅 Reunião de Pais e Mestres</strong><br>
             A nossa próxima reunião de acompanhamento pedagógico será no dia 15 de Junho, às 18h30. Contamos com a sua presença!
         </div>
-        <div class='aviso-card'>
-            <strong>📝 Avaliações do 2º Bimestre</strong><br>
-            As provas globais terão início na próxima segunda-feira. Por favor, verifiquem o calendário de estudos enviado por e-mail.
-        </div>
-        <div class='aviso-card'>
-            <strong>⚽ Jogos Interescolares</strong><br>
-            As inscrições para os jogos de futsal e voleibol terminam nesta sexta-feira. Procure o professor de Educação Física.
-        </div>
         """, unsafe_allow_html=True)
 
-
-# Painel da Diretoria (Mantido do código original)
 elif st.session_state.perfil_logado in ["admin", "diretoria"]:
     st.header("👑 Painel da Diretoria")
     st.markdown("Você está conectado como Administrador. O sistema identificou o seu nível de acesso máximo.")
@@ -238,7 +260,9 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
     c2.metric("Inteligência Artificial", "Gemini API", "Online" if ia_configurada else "Offline")
     c3.metric("Status do Servidor", "Estável", "100%")
 
-# Painel do Professor (Mantido do código original)
+# ---------------------------------------------------------
+# PAINEL DO PROFESSOR (COM NOVAS DISCIPLINAS E CONCEITOS)
+# ---------------------------------------------------------
 elif st.session_state.perfil_logado == "professor":
     aba_dash, aba_freq, aba_notas, aba_ia = st.tabs(["📊 Dashboard", "📅 Frequência", "📝 Notas", "🤖 Gerador IA"])
     
@@ -281,12 +305,18 @@ elif st.session_state.perfil_logado == "professor":
     with aba_notas:
         lista_turmas = carregar_turmas()
         
+        # DOCUMENTAÇÃO: A lista de disciplinas foi atualizada conforme a grade da escola
+        lista_disciplinas = [
+            "Selecione...", "Português", "Matemática", "Artes", "Inglês", 
+            "Ciências", "História", "Geografia", "Ed. Física", "Ens. Religioso"
+        ]
+        
         if not st.session_state.diario_aberto:
             st.markdown(f"<h1 style='text-align:center;'>Bom dia, {st.session_state.usuario_logado.split()[0]}!</h1>", unsafe_allow_html=True)
             st.markdown('<div class="painel-selecao">', unsafe_allow_html=True)
             st.text_input("👤 Professor", st.session_state.usuario_logado, disabled=True)
             sel_turma = st.selectbox("👥 Turma", ["Selecione..."] + lista_turmas)
-            sel_disc = st.selectbox("📄 Disciplina", ["Selecione...", "Língua Portuguesa", "Matemática", "História", "Ciências", "Geografia"])
+            sel_disc = st.selectbox("📄 Disciplina", lista_disciplinas)
             sel_bim = st.selectbox("📅 Bimestre", ["Selecione...", "1º Bimestre", "2º Bimestre", "3º Bimestre", "4º Bimestre"])
             st.markdown('</div>', unsafe_allow_html=True)
             
@@ -305,17 +335,22 @@ elif st.session_state.perfil_logado == "professor":
                 st.session_state.diario_aberto = False
                 st.rerun()
                 
-            st.markdown("### Quadro de Médias")
+            st.markdown("### Quadro de Notas e Conceitos")
             lista_alunos_notas = carregar_alunos(st.session_state.ctx_turma)
             
+            # DOCUMENTAÇÃO: Estrutura da tabela de notas atualizada para incluir a coluna CONCEITO
             df_notas = pd.DataFrame({
                 "ALUNO": lista_alunos_notas,
                 "AV1 (Prova)": [0.0] * len(lista_alunos_notas),
                 "AV2 (Prova)": [0.0] * len(lista_alunos_notas),
                 "AV3 (Prova)": [0.0] * len(lista_alunos_notas),
-                "PE (Trabalho)": [0.0] * len(lista_alunos_notas)
+                "PE (Trabalho)": [0.0] * len(lista_alunos_notas),
+                "CONCEITO": ["-"] * len(lista_alunos_notas)
             })
             
+            st.info("💡 **Dica:** Você pode lançar as notas numéricas, escolher o Conceito (Ótimo, Bom, Regular), ou usar ambos, conforme o perfil da turma.")
+            
+            # st.data_editor permite construir colunas interativas, como o Selectbox (menu suspenso) para o Conceito
             df_editado = st.data_editor(
                 df_notas, hide_index=True, use_container_width=True,
                 column_config={
@@ -324,15 +359,24 @@ elif st.session_state.perfil_logado == "professor":
                     "AV2 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"),
                     "AV3 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"),
                     "PE (Trabalho)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"),
+                    "CONCEITO": st.column_config.SelectboxColumn(
+                        "Conceito", help="Avaliação Qualitativa", options=["-", "Ótimo", "Bom", "Regular"], required=True
+                    )
                 }
             )
             
             df_resultado = df_editado.copy()
             df_resultado["MÉDIA FINAL"] = df_resultado[["AV1 (Prova)", "AV2 (Prova)", "AV3 (Prova)", "PE (Trabalho)"]].mean(axis=1).round(1)
             df_resultado["SITUAÇÃO"] = df_resultado["MÉDIA FINAL"].apply(lambda m: "🟢 APROVADO" if m >= 7.0 else ("🟡 RECUPERAÇÃO" if m >= 5.0 else "🔴 REPROVADO"))
-            st.dataframe(df_resultado[["ALUNO", "MÉDIA FINAL", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
             
-            st.button("💾 Salvar Diário de Notas", type="primary", use_container_width=True)
+            # O professor visualiza o resumo antes de salvar
+            st.dataframe(df_resultado[["ALUNO", "MÉDIA FINAL", "SITUAÇÃO", "CONCEITO"]], hide_index=True, use_container_width=True)
+            
+            if st.button("💾 Salvar Diário de Notas no Banco de Dados", type="primary", use_container_width=True):
+                with st.spinner("Conectando ao servidor e enviando as notas..."):
+                    sucesso = salvar_notas_bd(st.session_state.ctx_turma, st.session_state.ctx_disc, st.session_state.ctx_bim, df_resultado)
+                    if sucesso:
+                        st.success("✅ Diário salvo com sucesso! As notas e conceitos já estão disponíveis no portal do aluno.")
 
     with aba_ia:
         st.markdown("<h2>🤖 Fábrica de Avaliações com IA</h2>", unsafe_allow_html=True)
