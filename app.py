@@ -13,18 +13,10 @@ import io
 # =============================================================================
 st.set_page_config(page_title="SEEA - Gestão Escolar", page_icon="🏫", layout="wide")
 
-# DOCUMENTAÇÃO: MODO WHITE-LABEL (PRECISÃO CIRÚRGICA)
-# Removemos a regra que destruía tudo. Agora miramos apenas nos botões da direita.
+# DOCUMENTAÇÃO: RECUO TÁTICO DE CSS
+# Removemos os códigos de ocultação. Mantemos apenas as cores e o design das caixas.
 st.markdown("""
 <style>
-    /* Oculta os botões do canto superior direito (Share, GitHub, Menu de opções) */
-    [data-testid="stHeaderActionElements"] { display: none !important; }
-    [data-testid="stToolbar"] { display: none !important; }
-    #MainMenu { display: none !important; }
-    
-    /* Limpeza do rodapé */
-    footer { display: none !important; visibility: hidden !important; }
-
     /* Mantém a cor verde claro na barra superior */
     [data-testid="stHeader"] { background-color: #d4edda !important; }
     
@@ -206,10 +198,8 @@ def fazer_logout():
 # =============================================================================
 # --- 5. MENU LATERAL (SIDEBAR) ---
 # =============================================================================
-if st.session_state.usuario_logado is None:
-    # Se não há login, desligamos o botão de menu (hamburger) no telemóvel
-    st.markdown("""<style>[data-testid="collapsedControl"] { display: none !important; }</style>""", unsafe_allow_html=True)
-else:
+# A barra lateral só aparece se houver login
+if st.session_state.usuario_logado is not None:
     with st.sidebar:
         st.markdown("<h2 style='text-align:center;'>🌎 SEEA</h2>", unsafe_allow_html=True)
         st.markdown("<p style='text-align:center; font-size:0.8em; color:#888;'>Sistema de Gestão Escolar</p>", unsafe_allow_html=True)
