@@ -13,8 +13,12 @@ import io
 # =============================================================================
 st.set_page_config(page_title="SEEA - Gestão Escolar", page_icon="🏫", layout="wide")
 
+# DOCUMENTAÇÃO: Injeção de CSS para alterar a barra superior preta para verde claro
 st.markdown("""
 <style>
+    /* Remove a barra preta do Streamlit e aplica a cor do card Financeiro */
+    [data-testid="stHeader"] { background-color: #d4edda !important; }
+    
     .stApp { background-color: #f4f7f6; }
     .stApp p, .stApp span, .stApp label, .stApp div[data-testid="stMarkdownContainer"] { color: #1e3d59 !important; }
     h1, h2, h3, h4, h5 { color: #004d99 !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -24,7 +28,6 @@ st.markdown("""
     .painel-selecao { background-color: #ffffff; border-radius: 15px; padding: 25px; border-top: 5px solid #004d99; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
     div[data-baseweb="select"] > div, input, textarea, div[data-baseweb="base-input"] { background-color: #ffffff !important; color: #000000 !important; -webkit-text-fill-color: #000000 !important; }
     input::placeholder, textarea::placeholder { color: #888888 !important; -webkit-text-fill-color: #888888 !important; }
-    .aviso-card { background-color: #fff3cd; border-left: 5px solid #ffecb5; padding: 15px; border-radius: 5px; margin-bottom: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -91,20 +94,10 @@ def salvar_notas_bd(turma, disciplina, bimestre, df_resultados):
         gc = get_gspread_client()
         if gc:
             ws = gc.open("Base_SEEA").worksheet("Notas")
-            
             novas_linhas = []
             for index, row in df_resultados.iterrows():
-                linha = [
-                    turma, 
-                    disciplina, 
-                    bimestre, 
-                    row["ALUNO"], 
-                    str(row["MÉDIA FINAL"]), 
-                    row["SITUAÇÃO"],
-                    str(row["CONCEITO"]) 
-                ]
+                linha = [turma, disciplina, bimestre, row["ALUNO"], str(row["MÉDIA FINAL"]), row["SITUAÇÃO"], str(row["CONCEITO"])]
                 novas_linhas.append(linha)
-                
             ws.append_rows(novas_linhas, value_input_option="USER_ENTERED")
             return True
     except Exception as e:
@@ -117,20 +110,13 @@ def carregar_notas_aluno(nome_aluno):
         if gc:
             ws = gc.open("Base_SEEA").worksheet("Notas")
             records = ws.get_all_records()
-            
-            if not records:
-                return pd.DataFrame()
-                
+            if not records: return pd.DataFrame()
             df = pd.DataFrame(records)
             df.columns = df.columns.astype(str).str.strip().str.lower()
-            
             if 'aluno' in df.columns:
-                df_filtrado = df[df['aluno'].astype(str).str.strip() == nome_aluno.strip()]
-                return df_filtrado
-            else:
-                return pd.DataFrame()
-    except Exception as e:
-        return pd.DataFrame() 
+                return df[df['aluno'].astype(str).str.strip() == nome_aluno.strip()]
+            return pd.DataFrame()
+    except: return pd.DataFrame() 
 
 # DOCUMENTAÇÃO: FUNÇÕES DE GESTÃO ADMIN (Leitura e Escrita Completa)
 def carregar_tabela_completa(nome_aba):
@@ -139,9 +125,12 @@ def carregar_tabela_completa(nome_aba):
         if gc:
             ws = gc.open("Base_SEEA").worksheet(nome_aba)
             records = ws.get_all_records()
+            # Se a aba estiver vazia, cria um DataFrame vazio com colunas base
+            if not records:
+                if nome_aba == "Avisos": return pd.DataFrame(columns=["tipo", "aluno", "mensagem", "data"])
+                return pd.DataFrame()
             return pd.DataFrame(records)
     except Exception as e:
-        st.error(f"Erro ao carregar a aba {nome_aba}: {e}")
         return pd.DataFrame()
 
 def sincronizar_aba_completa(nome_aba, df_editado):
@@ -149,11 +138,8 @@ def sincronizar_aba_completa(nome_aba, df_editado):
         gc = get_gspread_client()
         if gc:
             ws = gc.open("Base_SEEA").worksheet(nome_aba)
-            # Limpa valores nulos do pandas para evitar erros no Google Sheets
             df_editado = df_editado.fillna("")
             dados_lista = [df_editado.columns.values.tolist()] + df_editado.values.tolist()
-            
-            # Limpa a aba inteira e escreve a tabela nova por cima
             ws.clear()
             ws.update(values=dados_lista, range_name="A1")
             return True
@@ -207,7 +193,6 @@ with st.sidebar:
         if st.button("Entrar", use_container_width=True, type="primary"):
             fazer_login(user_input, pass_input)
             
-        # DOCUMENTAÇÃO: BOTÃO DE RECUPERAÇÃO DE SENHA (ORIENTAÇÃO)
         with st.expander("❓ Esqueci minha senha"):
             st.info("Para recuperar o seu acesso, por favor entre em contato com a Secretaria da Escola.\n\n📞 WhatsApp: (81) 99999-9999\n📧 E-mail: admin@seea.com.br")
     else:
@@ -236,6 +221,19 @@ with st.sidebar:
 
 if st.session_state.usuario_logado is None:
     st.markdown("<h1 style='text-align: center;'>Bem-vindo ao Portal SEEA</h1>", unsafe_allow_html=True)
+    
+    # DOCUMENTAÇÃO: MURAL PÚBLICO (AVISOS GERAIS)
+    # Busca avisos cadastrados como "Geral" para mostrar para todos na entrada
+    df_avisos = carregar_tabela_completa("Avisos")
+    if not df_avisos.empty and 'tipo' in df_avisos.columns:
+        # Filtra os avisos gerais garantindo que letras maiúsculas/minúsculas não quebrem a lógica
+        avisos_gerais = df_avisos[df_avisos['tipo'].astype(str).str.strip().str.upper() == 'GERAL']
+        if not avisos_gerais.empty:
+            for _, aviso in avisos_gerais.iterrows():
+                # Usa st.warning (Amarelo/Laranja) nativo do Streamlit para alertas globais
+                st.warning(f"📢 **COMUNICADO OFICIAL ({aviso.get('data', '')}):** {aviso.get('mensagem', '')}", icon="🏫")
+            st.markdown("<br>", unsafe_allow_html=True) # Espaçamento
+    
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.info("📝 **Matrículas 2026**\n\nGaranta a vaga do seu filho.")
     with col2: st.success("💰 **Financeiro**\n\nAcesse boletos e pagamentos.")
@@ -246,7 +244,6 @@ elif st.session_state.perfil_logado == "aluno":
     st.markdown(f"<h1 style='text-align: center;'>🎓 Portal do Aluno</h1>", unsafe_allow_html=True)
     
     dados_do_aluno = buscar_dados_aluno(st.session_state.usuario_logado)
-    
     if dados_do_aluno:
         st.markdown(f"""
         <div style='background-color:#e6f2ff; padding:15px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border: 1px solid #b3d9ff;'>
@@ -256,95 +253,101 @@ elif st.session_state.perfil_logado == "aluno":
             </div>
         </div>
         """, unsafe_allow_html=True)
-    else:
-        st.warning("⚠️ Dados da turma não encontrados. Por favor, contacte a secretaria.")
 
     aba_boletim, aba_avisos = st.tabs(["📊 Boletim de Notas", "📢 Mural de Avisos"])
     
     with aba_boletim:
         st.markdown("### 📝 Desempenho Acadêmico")
-        st.write("Acompanhe as notas ou conceitos lançados pelos professores.")
-        
         df_notas_aluno = carregar_notas_aluno(st.session_state.usuario_logado)
-        
         if not df_notas_aluno.empty:
             colunas_esperadas = ['disciplina', 'bimestre', 'media', 'conceito', 'situacao']
             colunas_presentes = [col for col in colunas_esperadas if col in df_notas_aluno.columns]
-            
             if len(colunas_presentes) > 0:
                 df_boletim_visual = df_notas_aluno[colunas_presentes]
-                
-                renomear_para_tela = {
-                    'disciplina': 'Disciplina',
-                    'bimestre': 'Bimestre',
-                    'media': 'Média Final',
-                    'conceito': 'Conceito',
-                    'situacao': 'Situação'
-                }
+                renomear_para_tela = {'disciplina': 'Disciplina', 'bimestre': 'Bimestre', 'media': 'Média Final', 'conceito': 'Conceito', 'situacao': 'Situação'}
                 df_boletim_visual = df_boletim_visual.rename(columns=renomear_para_tela)
-                
                 st.dataframe(df_boletim_visual, hide_index=True, use_container_width=True)
-            else:
-                st.warning("⚠️ Os cabeçalhos da planilha 'Notas' não estão padronizados. Por favor, verifique se existem as colunas 'disciplina', 'bimestre', etc.")
         else:
             st.info("📌 O boletim está vazio. Os professores ainda não lançaram notas neste período.")
 
     with aba_avisos:
         st.markdown("### 📢 Quadro de Comunicações")
-        st.write("Fique atento aos prazos e comunicados importantes da escola.")
-        st.markdown("""
-        <div class='aviso-card'>
-            <strong>📅 Reunião de Pais e Mestres</strong><br>
-            A nossa próxima reunião de acompanhamento pedagógico será no dia 15 de Junho, às 18h30. Contamos com a sua presença!
-        </div>
-        """, unsafe_allow_html=True)
+        st.write("Fique atento aos prazos e comunicados direcionados a você.")
+        
+        # DOCUMENTAÇÃO: MURAL PRIVADO DO ALUNO
+        df_avisos = carregar_tabela_completa("Avisos")
+        tem_aviso = False
+        
+        if not df_avisos.empty and 'tipo' in df_avisos.columns:
+            # 1. Busca avisos Globais para garantir que o aluno veja
+            avisos_gerais = df_avisos[df_avisos['tipo'].astype(str).str.strip().str.upper() == 'GERAL']
+            for _, aviso in avisos_gerais.iterrows():
+                st.warning(f"📢 **AVISO GERAL ({aviso.get('data', '')}):** {aviso.get('mensagem', '')}")
+                tem_aviso = True
+                
+            # 2. Busca avisos Individuais focados neste exato aluno logado
+            avisos_ind = df_avisos[(df_avisos['tipo'].astype(str).str.strip().str.upper() == 'INDIVIDUAL') & (df_avisos['aluno'].astype(str).str.strip() == st.session_state.usuario_logado)]
+            for _, aviso in avisos_ind.iterrows():
+                # Usa st.error (Vermelho) para chamar a atenção do pai/aluno
+                st.error(f"📩 **MENSAGEM PRIVADA ({aviso.get('data', '')}):** {aviso.get('mensagem', '')}", icon="⚠️")
+                tem_aviso = True
+                
+        if not tem_aviso:
+            st.success("✅ Tudo tranquilo! Não há novos comunicados da secretaria no momento.")
 
-# ---------------------------------------------------------
-# PAINEL DA DIRETORIA (AGORA COM GESTÃO DE USUÁRIOS E ALUNOS)
-# ---------------------------------------------------------
 elif st.session_state.perfil_logado in ["admin", "diretoria"]:
     st.header("👑 Painel da Diretoria - Centro de Controle")
-    st.markdown("Bem-vindo ao centro de gestão. Faça adições, edições ou exclusões diretamente nas tabelas abaixo.")
+    st.markdown("Faça adições, edições ou exclusões diretamente nas tabelas abaixo.")
     
-    aba_metricas, aba_usuarios, aba_alunos = st.tabs(["📊 Visão Geral", "🔐 Gestão de Logins", "🎓 Gestão de Alunos"])
+    # Adicionada a nova aba de Gestão de Avisos
+    aba_metricas, aba_usuarios, aba_alunos, aba_avisos_admin = st.tabs(["📊 Visão Geral", "🔐 Gestão de Logins", "🎓 Gestão de Alunos", "📣 Gestão de Avisos"])
     
     with aba_metricas:
-        st.markdown("### Status do Sistema")
         c1, c2, c3 = st.columns(3)
         c1.metric("Banco de Dados", "Google Sheets", "Conectado")
         c2.metric("Inteligência Artificial", "Gemini API", "Online" if ia_configurada else "Offline")
         c3.metric("Segurança", "Ativa", "100%")
         
     with aba_usuarios:
-        st.markdown("### 🔐 Tabela de Usuários (Logins e Senhas)")
-        st.info("💡 **Dica:** Você pode alterar senhas, adicionar novas linhas (novos logins) ou excluir linhas clicando na lixeira à esquerda. Clique no botão de Salvar no final para sincronizar.")
-        
+        st.markdown("### 🔐 Tabela de Usuários")
         df_usuarios = carregar_tabela_completa("Usuarios")
         if not df_usuarios.empty:
-            # num_rows="dynamic" permite criar e apagar linhas!
             df_usuarios_editado = st.data_editor(df_usuarios, use_container_width=True, num_rows="dynamic", key="editor_users")
-            
-            if st.button("💾 Sincronizar Senhas no Banco de Dados", type="primary", use_container_width=True):
-                with st.spinner("Sincronizando..."):
-                    if sincronizar_aba_completa("Usuarios", df_usuarios_editado):
-                        st.success("✅ Logins e senhas atualizados com sucesso!")
-        else:
-            st.warning("Não foi possível carregar a tabela de Usuários.")
+            if st.button("💾 Sincronizar Senhas", type="primary", use_container_width=True):
+                if sincronizar_aba_completa("Usuarios", df_usuarios_editado): st.success("✅ Atualizado com sucesso!")
 
     with aba_alunos:
-        st.markdown("### 🎓 Tabela de Matrículas (Cadastro de Alunos)")
-        st.info("💡 **Dica:** Gerencie o cadastro oficial dos alunos. O nome do aluno aqui deve ser idêntico ao nome de login dele na aba de Usuários.")
-        
+        st.markdown("### 🎓 Tabela de Matrículas")
         df_alunos = carregar_tabela_completa("Alunos")
         if not df_alunos.empty:
             df_alunos_editado = st.data_editor(df_alunos, use_container_width=True, num_rows="dynamic", key="editor_alunos")
-            
-            if st.button("💾 Sincronizar Alunos no Banco de Dados", type="primary", use_container_width=True):
-                with st.spinner("Sincronizando..."):
-                    if sincronizar_aba_completa("Alunos", df_alunos_editado):
-                        st.success("✅ Matrículas atualizadas com sucesso!")
-        else:
-            st.warning("Não foi possível carregar a tabela de Alunos.")
+            if st.button("💾 Sincronizar Alunos", type="primary", use_container_width=True):
+                if sincronizar_aba_completa("Alunos", df_alunos_editado): st.success("✅ Atualizado com sucesso!")
+                
+    # DOCUMENTAÇÃO: PAINEL DE GESTÃO DE AVISOS PARA O ADMIN
+    with aba_avisos_admin:
+        st.markdown("### 📣 Central de Mensagens e Alertas")
+        st.info("💡 **Como usar:** Na coluna 'tipo', escreva `Geral` (para todos verem) ou `Individual` (para um aluno específico). Na coluna 'aluno', digite o nome completo do aluno ou `Todos`.")
+        
+        df_avisos_admin = carregar_tabela_completa("Avisos")
+        
+        # Configurando a tabela para ser fácil de preencher pelo Admin
+        df_avisos_editado = st.data_editor(
+            df_avisos_admin, 
+            use_container_width=True, 
+            num_rows="dynamic", 
+            key="editor_avisos",
+            column_config={
+                "tipo": st.column_config.SelectboxColumn("Tipo de Aviso", options=["Geral", "Individual"], required=True),
+                "aluno": st.column_config.TextColumn("Aluno Alvo (ou Todos)", required=True),
+                "mensagem": st.column_config.TextColumn("Mensagem / Aviso", required=True),
+                "data": st.column_config.DateColumn("Data de Publicação", format="DD/MM/YYYY")
+            }
+        )
+        if st.button("💾 Publicar / Sincronizar Avisos", type="primary", use_container_width=True):
+            with st.spinner("Transmitindo avisos..."):
+                if sincronizar_aba_completa("Avisos", df_avisos_editado): 
+                    st.success("✅ Avisos publicados com sucesso na plataforma!")
 
 elif st.session_state.perfil_logado == "professor":
     aba_dash, aba_freq, aba_notas, aba_ia = st.tabs(["📊 Dashboard", "📅 Frequência", "📝 Notas", "🤖 Gerador IA"])
@@ -387,25 +390,18 @@ elif st.session_state.perfil_logado == "professor":
 
     with aba_notas:
         lista_turmas = carregar_turmas()
-        lista_disciplinas = [
-            "Selecione...", "Português", "Matemática", "Artes", "Inglês", 
-            "Ciências", "História", "Geografia", "Ed. Física", "Ens. Religioso"
-        ]
+        lista_disciplinas = ["Selecione...", "Português", "Matemática", "Artes", "Inglês", "Ciências", "História", "Geografia", "Ed. Física", "Ens. Religioso"]
         
         if not st.session_state.diario_aberto:
             st.markdown(f"<h1 style='text-align:center;'>Bom dia, {st.session_state.usuario_logado.split()[0]}!</h1>", unsafe_allow_html=True)
             st.markdown('<div class="painel-selecao">', unsafe_allow_html=True)
-            
             st.text_input("👤 Professor", st.session_state.usuario_logado, disabled=True)
-            
             c_sel1, c_sel2 = st.columns(2)
             with c_sel1: sel_turma = st.selectbox("👥 Turma", ["Selecione..."] + lista_turmas)
             with c_sel2: sel_disc = st.selectbox("📄 Disciplina", lista_disciplinas)
-            
             c_sel3, c_sel4 = st.columns(2)
             with c_sel3: sel_bim = st.selectbox("📅 Bimestre/Unidade", ["Selecione...", "1º Bimestre", "2º Bimestre", "3º Bimestre", "4º Bimestre"])
             with c_sel4: sel_aval = st.selectbox("⚖️ Sistema de Avaliação", ["Selecione...", "Numérico (Notas 0 a 10)", "Conceitual (Ótimo, Bom, Regular)"])
-            
             st.markdown('</div>', unsafe_allow_html=True)
             
             if sel_turma != "Selecione..." and sel_disc != "Selecione..." and sel_bim != "Selecione..." and sel_aval != "Selecione...":
@@ -436,130 +432,52 @@ elif st.session_state.perfil_logado == "professor":
             lista_alunos_notas = carregar_alunos(st.session_state.ctx_turma)
             
             if st.session_state.ctx_aval == "Numérico (Notas 0 a 10)":
-                st.info("💡 **Dica:** Lance as notas decimais. O sistema calculará a média e a situação automaticamente.")
-                df_notas = pd.DataFrame({
-                    "ALUNO": lista_alunos_notas,
-                    "AV1 (Prova)": [0.0] * len(lista_alunos_notas),
-                    "AV2 (Prova)": [0.0] * len(lista_alunos_notas),
-                    "AV3 (Prova)": [0.0] * len(lista_alunos_notas),
-                    "PE (Trabalho)": [0.0] * len(lista_alunos_notas)
-                })
-                
-                df_editado = st.data_editor(
-                    df_notas, hide_index=True, use_container_width=True,
-                    column_config={
-                        "ALUNO": st.column_config.TextColumn(disabled=True),
-                        "AV1 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"),
-                        "AV2 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"),
-                        "AV3 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"),
-                        "PE (Trabalho)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"),
-                    }
-                )
-                
+                df_notas = pd.DataFrame({"ALUNO": lista_alunos_notas, "AV1 (Prova)": [0.0]*len(lista_alunos_notas), "AV2 (Prova)": [0.0]*len(lista_alunos_notas), "AV3 (Prova)": [0.0]*len(lista_alunos_notas), "PE (Trabalho)": [0.0]*len(lista_alunos_notas)})
+                df_editado = st.data_editor(df_notas, hide_index=True, use_container_width=True, column_config={"ALUNO": st.column_config.TextColumn(disabled=True), "AV1 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "AV2 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "AV3 (Prova)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f"), "PE (Trabalho)": st.column_config.NumberColumn(min_value=0.0, max_value=10.0, format="%.1f")})
                 df_resultado = df_editado.copy()
                 df_resultado["MÉDIA FINAL"] = df_resultado[["AV1 (Prova)", "AV2 (Prova)", "AV3 (Prova)", "PE (Trabalho)"]].mean(axis=1).round(1)
                 df_resultado["SITUAÇÃO"] = df_resultado["MÉDIA FINAL"].apply(lambda m: "🟢 APROVADO" if m >= 7.0 else ("🟡 RECUPERAÇÃO" if m >= 5.0 else "🔴 REPROVADO"))
                 df_resultado["CONCEITO"] = "-" 
-                
                 st.dataframe(df_resultado[["ALUNO", "MÉDIA FINAL", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
-                
             else:
-                st.info("💡 **Dica:** Escolha o conceito qualitativo para cada aluno. As médias numéricas foram desativadas.")
-                df_notas = pd.DataFrame({
-                    "ALUNO": lista_alunos_notas,
-                    "CONCEITO": ["-"] * len(lista_alunos_notas)
-                })
-                
-                df_editado = st.data_editor(
-                    df_notas, hide_index=True, use_container_width=True,
-                    column_config={
-                        "ALUNO": st.column_config.TextColumn(disabled=True),
-                        "CONCEITO": st.column_config.SelectboxColumn(
-                            "Conceito Qualitativo", options=["-", "Ótimo", "Bom", "Regular"], required=True
-                        )
-                    }
-                )
-                
+                df_notas = pd.DataFrame({"ALUNO": lista_alunos_notas, "CONCEITO": ["-"]*len(lista_alunos_notas)})
+                df_editado = st.data_editor(df_notas, hide_index=True, use_container_width=True, column_config={"ALUNO": st.column_config.TextColumn(disabled=True), "CONCEITO": st.column_config.SelectboxColumn("Conceito Qualitativo", options=["-", "Ótimo", "Bom", "Regular"], required=True)})
                 df_resultado = df_editado.copy()
                 df_resultado["MÉDIA FINAL"] = "-" 
                 df_resultado["SITUAÇÃO"] = df_resultado["CONCEITO"].apply(lambda c: "🟢 APROVADO" if c in ["Ótimo", "Bom"] else ("🟡 ATENÇÃO" if c == "Regular" else "⚪ PENDENTE"))
-                
                 st.dataframe(df_resultado[["ALUNO", "CONCEITO", "SITUAÇÃO"]], hide_index=True, use_container_width=True)
 
             if st.button("💾 Salvar Diário de Notas no Banco de Dados", type="primary", use_container_width=True):
-                with st.spinner("Conectando ao servidor e enviando as notas..."):
-                    sucesso = salvar_notas_bd(st.session_state.ctx_turma, st.session_state.ctx_disc, st.session_state.ctx_bim, df_resultado)
-                    if sucesso:
-                        st.success("✅ Diário salvo com sucesso! Os dados já estão disponíveis no portal do aluno.")
+                with st.spinner("Conectando ao servidor..."):
+                    if salvar_notas_bd(st.session_state.ctx_turma, st.session_state.ctx_disc, st.session_state.ctx_bim, df_resultado): st.success("✅ Diário salvo com sucesso!")
 
     with aba_ia:
         st.markdown("<h2>🤖 Fábrica de Avaliações com IA</h2>", unsafe_allow_html=True)
-        if not ia_configurada:
-            st.error("⚠️ **Sistema Desconectado:** A chave da API do Gemini não foi encontrada no cofre.")
+        if not ia_configurada: st.error("⚠️ Sistema Desconectado.")
         else:
             with st.form("form_ia_gerador"):
-                st.markdown("#### 1. Material de Referência (Opcional, mas recomendado)")
-                arquivo_upload = st.file_uploader("📄 Envie um resumo, texto ou conteúdo base (Apenas PDF ou TXT)", type=["pdf", "txt"])
-                
-                st.markdown("#### 2. Configurações da Avaliação")
-                assunto = st.text_input("📚 Assunto Principal", placeholder="Ex: Fotossíntese, Equações de 2º Grau...")
-                
+                arquivo_upload = st.file_uploader("📄 Envie um resumo (PDF ou TXT)", type=["pdf", "txt"])
+                assunto = st.text_input("📚 Assunto Principal")
                 c_ia1, c_ia2, c_ia3, c_ia4 = st.columns(4)
-                with c_ia1: tipo_quest = st.selectbox("📝 Tipo de Questão", ["Múltipla Escolha (A-E)", "Abertas (Dissertativas)", "Mista (50/50)"])
+                with c_ia1: tipo_quest = st.selectbox("📝 Tipo de Questão", ["Múltipla Escolha", "Abertas", "Mista"])
                 with c_ia2: nivel_dif = st.selectbox("⚙️ Dificuldade", ["Fácil", "Médio", "Difícil"])
-                with c_ia3: qtd_quest = st.number_input("🔢 Quantidade de Questões", min_value=1, max_value=50, value=10)
-                with c_ia4: peso_quest = st.number_input("⚖️ Peso por Questão", min_value=0.1, max_value=10.0, value=1.0, step=0.1)
-                gerar_prova_btn = st.form_submit_button("🚀 Elaborar Avaliação Inédita com IA", type="primary", use_container_width=True)
+                with c_ia3: qtd_quest = st.number_input("🔢 Qtd", min_value=1, max_value=50, value=10)
+                with c_ia4: peso_quest = st.number_input("⚖️ Peso", min_value=0.1, max_value=10.0, value=1.0)
+                gerar_prova_btn = st.form_submit_button("🚀 Elaborar Prova", type="primary", use_container_width=True)
 
             if gerar_prova_btn:
-                if not assunto and not arquivo_upload:
-                    st.warning("⚠️ Por favor, digite um Assunto ou envie um Arquivo Base para a IA analisar.")
+                if not assunto and not arquivo_upload: st.warning("Digite um assunto ou envie arquivo.")
                 else:
-                    with st.spinner("Lendo material e conectando ao núcleo de IA... Elaborando prova..."):
+                    with st.spinner("Gerando..."):
                         try:
                             texto_extraido = ""
-                            if arquivo_upload is not None:
-                                try:
-                                    if arquivo_upload.name.endswith(".txt"):
-                                        texto_extraido = arquivo_upload.read().decode("utf-8")
-                                    elif arquivo_upload.name.endswith(".pdf"):
-                                        leitor_pdf = PyPDF2.PdfReader(arquivo_upload)
-                                        for pagina in leitor_pdf.pages:
-                                            texto_extraido += pagina.extract_text() + "\n"
-                                except Exception as e:
-                                    st.error(f"Não foi possível ler o arquivo enviado. Detalhes: {e}")
-                                    texto_extraido = ""
-
+                            if arquivo_upload:
+                                if arquivo_upload.name.endswith(".txt"): texto_extraido = arquivo_upload.read().decode("utf-8")
+                                elif arquivo_upload.name.endswith(".pdf"):
+                                    for p in PyPDF2.PdfReader(arquivo_upload).pages: texto_extraido += p.extract_text() + "\n"
                             modelo = genai.GenerativeModel('gemini-2.5-flash')
-                            prompt = f"Você é um professor elaborando uma prova. Assunto: {assunto}. Nível: {nivel_dif}. Qtd Questões: {qtd_quest}. Tipo: {tipo_quest}. Peso: {peso_quest} pts/cada.\n"
-                            
-                            if texto_extraido != "":
-                                prompt += f"\nATENÇÃO: Utilize o texto abaixo como sua ÚNICA e EXCLUSIVA fonte de informações para formular as questões. Não invente dados que não estejam no texto:\n\n---\n{texto_extraido[:15000]}\n---\n"
-                            
-                            prompt += "\nFormate a prova de forma limpa. Inclua um cabeçalho escolar (Escola Projeto Saber, Nome, Data). NÃO coloque o gabarito junto com a prova. O GABARITO DEVE FICAR APENAS NO FINAL, isolado por uma linha e marcado como 'GABARITO DO PROFESSOR'."
-                            
-                            safety_settings = [
-                                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-                                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-                            ]
-                            
-                            resposta = modelo.generate_content(prompt, safety_settings=safety_settings)
-                            texto_prova = resposta.text
-                            
-                            st.success("✅ Avaliação forjada com sucesso pela Inteligência Artificial!")
-                            st.text_area("📄 Pré-Visualização do Documento:", texto_prova, height=500)
-                            
-                            col_exp1, col_exp2 = st.columns(2)
-                            with col_exp1: st.download_button(label="📥 Baixar (.TXT)", data=texto_prova, file_name=f"Prova_{assunto.replace(' ', '_')}.txt", mime="text/plain", use_container_width=True)
-                            with col_exp2: st.button("🖨️ Imprimir / Salvar PDF (Ctrl+P)", use_container_width=True)
-                                
-                        except Exception as e:
-                            erro_str = str(e).lower()
-                            if "429" in erro_str or "quota" in erro_str:
-                                st.warning("🚦 **Servidor Ocupado:** O limite gratuito da IA foi atingido ou sua chave está bloqueada temporariamente pelo uso excessivo. Tente novamente mais tarde.")
-                            elif "api_key" in erro_str or "key invalid" in erro_str:
-                                st.error("🔑 **Erro na Chave:** A sua chave da API está inválida ou foi digitada incorretamente.")
-                            else:
-                                st.error(f"⚠️ Erro de conexão com a IA: {e}")
+                            prompt = f"Crie uma prova sobre {assunto}. Dificuldade: {nivel_dif}. Questões: {qtd_quest}. Tipo: {tipo_quest}. Peso: {peso_quest}.\nTexto Base: {texto_extraido[:15000]}\nGabarito apenas no final."
+                            resposta = modelo.generate_content(prompt)
+                            st.success("✅ Concluído!")
+                            st.text_area("📄 Pré-Visualização:", resposta.text, height=500)
+                        except Exception as e: st.error(f"Erro: {e}")
