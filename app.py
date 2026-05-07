@@ -377,9 +377,16 @@ if st.session_state.usuario_logado is None:
             
         with st.expander("📞 **Contatos e Suporte**", expanded=False):
             st.markdown("Precisando de ajuda? Nossa equipe está pronta para atender:")
-            st.markdown("- **Secretaria (WhatsApp):** (81) 98328-8495")
-            st.markdown("- **Coord. Infantil:** (81) 99394-3245")
-            st.markdown("- **Coord. Fundamental 1:** (81) 98508-0876")
+            st.markdown("<br>", unsafe_allow_html=True) # Dá um pequeno espaço para respirar
+            
+            # LINKS DIRETOS PARA O WHATSAPP (A magia acontece aqui!)
+            st.markdown("- **Secretaria (WhatsApp):** [(81) 98328-8495](https://wa.me/5581983288495)")
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            st.markdown("- **Coord. Infantil:** [(81) 99394-3245](https://wa.me/5581993943245)")
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            st.markdown("- **Coord. Fundamental 1:** [(81) 98508-0876](https://wa.me/5581985080876)")
 
 elif st.session_state.perfil_logado == "aluno":
     st.markdown(f"<h1 style='text-align: center;'>🎓 Portal do Aluno</h1>", unsafe_allow_html=True)
