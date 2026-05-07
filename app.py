@@ -348,8 +348,8 @@ if st.session_state.usuario_logado is None:
             
         st.markdown("<br>", unsafe_allow_html=True)
         with st.expander("❓ Esqueci minha senha"):
-            st.info("Para recuperar o seu acesso, fale com a Secretaria.\n\n📞 (81) 99999-9999\n📧 admin@seea.com.br")
-
+            st.info("Para recuperar o seu acesso, fale com a Secretaria.\n\n📞 (81) 98328-8495")
+            
     with col_info:
         st.markdown("### 📌 Informações Úteis")
         
