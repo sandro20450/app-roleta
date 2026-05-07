@@ -14,13 +14,12 @@ import io
 st.set_page_config(page_title="SEEA - Gestão Escolar", page_icon="🏫", layout="wide")
 
 # DOCUMENTAÇÃO: LIMPEZA DE CSS
-# Removemos todas as cores forçadas para que o Streamlit respeite perfeitamente o Modo Claro / Modo Escuro do usuário.
+# Mantemos apenas a estrutura (sem forçar cores de fundo) para os painéis
 st.markdown("""
 <style>
     /* Esconde a marca d'água do Streamlit no rodapé */
     footer { display: none !important; visibility: hidden !important; }
     
-    /* Mantém apenas a estrutura (sem forçar cores de fundo) para os painéis que criamos no código HTML */
     .painel-selecao { border-radius: 15px; padding: 25px; border-top: 5px solid #004d99; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
     .painel-login { border-radius: 15px; padding: 30px; border-top: 5px solid #004d99; box-shadow: 0 4px 10px rgba(0,0,0,0.15); margin-bottom: 20px; }
 </style>
@@ -464,8 +463,9 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
             if total_registros > 0:
                 freq_media_pct = round((total_presencas / total_registros) * 100)
                 
+            # CORREÇÃO APLICADA AQUI: df_freq_calc em vez de df_hoje no filtro
             if 'data' in df_freq_calc.columns:
-                df_hoje = df_freq_calc[df_hoje['data'].astype(str) == hoje_str]
+                df_hoje = df_freq_calc[df_freq_calc['data'].astype(str) == hoje_str]
                 presentes_hoje = len(df_hoje[df_hoje['status'].astype(str).str.upper() == 'P'])
                 ausentes_hoje = len(df_hoje[df_hoje['status'].astype(str).str.upper() == 'F'])
 
@@ -714,3 +714,5 @@ elif st.session_state.perfil_logado == "professor":
                             st.success("✅ Concluído!")
                             st.text_area("📄 Pré-Visualização:", resposta.text, height=500)
                         except Exception as e: st.error(f"Erro: {e}")
+
+}
