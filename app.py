@@ -13,47 +13,16 @@ import io
 # =============================================================================
 st.set_page_config(page_title="SEEA - Gestão Escolar", page_icon="🏫", layout="wide")
 
+# DOCUMENTAÇÃO: LIMPEZA DE CSS
+# Removemos todas as cores forçadas para que o Streamlit respeite perfeitamente o Modo Claro / Modo Escuro do usuário.
 st.markdown("""
 <style>
-    [data-testid="stHeader"] { background-color: #d4edda !important; }
-    [data-testid="stHeaderActionElements"] * { color: #d4edda !important; fill: #d4edda !important; background-color: transparent !important; }
-    [data-testid="collapsedControl"] * { color: #000000 !important; fill: #000000 !important; }
-    
-    /* Mantém os ícones do menu flutuante visíveis (Tela cheia, Busca, CSV) */
-    [data-testid="stElementToolbar"] button svg, 
-    [data-testid="stElementToolbar"] button { color: #ffffff !important; fill: #ffffff !important; stroke: #ffffff !important; }
-    
+    /* Esconde a marca d'água do Streamlit no rodapé */
     footer { display: none !important; visibility: hidden !important; }
-    [data-testid="stSidebar"] { background-color: #e8eaed !important; border-right: 1px solid #cccccc; }
     
-    [data-testid="stExpander"] details summary { background-color: #e8eaed !important; color: #1e3d59 !important; border-radius: 5px; }
-    [data-testid="stExpander"] details summary p { color: #1e3d59 !important; font-weight: bold; }
-    
-    /* CAIXA PIX - TEXTO LARANJA FORÇADO (Tiro de precisão para vencer o bloqueio nativo) */
-    [data-testid="stCodeBlock"] { border-radius: 8px; }
-    [data-testid="stCodeBlock"] code, 
-    [data-testid="stCodeBlock"] span { 
-        color: #ff9900 !important; 
-        font-weight: bold !important; 
-        font-size: 1.1em !important;
-    }
-    
-    /* BOTÃO ASAAS - TEXTO LARANJA FORÇADO */
-    [data-testid="stLinkButton"] button { border: 1px solid #a0a0a0 !important; border-radius: 8px !important; }
-    [data-testid="stLinkButton"] * { color: #ff9900 !important; font-weight: bold !important; }
-    [data-testid="stLinkButton"] button:hover { opacity: 0.8 !important; }
-
-    .stApp { background-color: #f4f7f6; }
-    .stApp p, .stApp span, .stApp label, .stApp div[data-testid="stMarkdownContainer"] { color: #1e3d59 !important; }
-    h1, h2, h3, h4, h5 { color: #004d99 !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    .stButton > button p, .stButton > button span { color: #ffffff !important; }
-    
-    div[data-testid="metric-container"] { background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    .painel-selecao { background-color: #ffffff; border-radius: 15px; padding: 25px; border-top: 5px solid #004d99; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    .painel-login { background-color: #ffffff; border-radius: 15px; padding: 30px; border-top: 5px solid #004d99; box-shadow: 0 4px 10px rgba(0,0,0,0.15); margin-bottom: 20px; }
-    div[data-baseweb="select"] > div, input, textarea, div[data-baseweb="base-input"] { background-color: #ffffff !important; color: #000000 !important; -webkit-text-fill-color: #000000 !important; }
-    input::placeholder, textarea::placeholder { color: #888888 !important; -webkit-text-fill-color: #888888 !important; }
-    .aviso-card { background-color: #fff3cd; border-left: 5px solid #ffecb5; padding: 15px; border-radius: 5px; margin-bottom: 10px; }
+    /* Mantém apenas a estrutura (sem forçar cores de fundo) para os painéis que criamos no código HTML */
+    .painel-selecao { border-radius: 15px; padding: 25px; border-top: 5px solid #004d99; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .painel-login { border-radius: 15px; padding: 30px; border-top: 5px solid #004d99; box-shadow: 0 4px 10px rgba(0,0,0,0.15); margin-bottom: 20px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -364,16 +333,12 @@ if st.session_state.usuario_logado is None:
             
             st.markdown("##### 1. PIX (Cópia e Cola)")
             st.write("Copie a chave PIX (CPF: ELIUDE BERNARDO DE SOUZA SILVA) abaixo usando o botão de copiar à direita:")
-            
-            # Caixa original de código restaurada
             st.code("04994867460", language="text") 
             
             st.markdown("<br>", unsafe_allow_html=True)
             
             st.markdown("##### 2. PAGAMENTO NA PLATAFORMA ASAAS")
             st.write("Acesse o link para o portal de pagamentos seguros.")
-            
-            # Botão original restaurado
             st.link_button("💳 Abrir Plataforma ASAAS", "https://api.whatsapp.com/send?phone=5547933007606", use_container_width=True)
                 
         with st.expander("📍 **Nossa localização**", expanded=False):
