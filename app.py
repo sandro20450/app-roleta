@@ -365,7 +365,7 @@ if st.session_state.usuario_logado is None:
             
             st.markdown("##### 2. PAGAMENTO NA PLATAFORMA ASAAS")
             st.write("Acesse o link para o portal de pagamentos seguro.")
-            st.link_button("💳 Abrir Plataforma ASAAS", "COLE_AQUI_SEU_LINK_DO_ASAAS", use_container_width=True)
+            st.link_button("💳 Abrir Plataforma ASAAS", "https://api.whatsapp.com/send?phone=5547933007606", use_container_width=True)
                 
         with st.expander("📍 **Nossa localização**", expanded=False):
             st.markdown("**Endereço:** Endereço: Rua Antônio José de Paiva, S/N Loteamento Real Vitória - Vitória de Santo Antão - PE")
