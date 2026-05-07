@@ -356,18 +356,16 @@ if st.session_state.usuario_logado is None:
         with st.expander("💰 **Financeiro (Pagamentos e Taxas)**", expanded=False):
             st.markdown("Realize o pagamento da sua mensalidade de forma rápida e segura escolhendo uma das opções abaixo:")
             st.markdown("---")
-            c_pix1, c_pix2 = st.columns([2, 1])
-            with c_pix1:
-                st.markdown("##### 1. PIX (Copia e Cola)")
-                st.write("Copie a chave PIX (CPF: ELIUDE BERNARDO DE SOUZA SILVA) abaixo usando o botão de copiar à direita:")
-                st.code("04994867460", language="text") 
-                st.markdown("##### 3. PAGAMENTO NA PLATAFORMA ASAAS")
-                st.write("Acesse o link para o portal de pagamentos seguro.")
-                st.link_button("💳 Abrir Plataforma ASAAS", "COLE_AQUI_SEU_LINK_DO_ASAAS", use_container_width=True)
-            with c_pix2:
-                st.markdown("##### 2. QR Code")
-                meu_link_qr_code = "COLE_AQUI_O_LINK_DA_SUA_IMAGEM"
-                st.image(meu_link_qr_code, width=130, caption="Escanear PIX")
+            
+            st.markdown("##### 1. PIX (Copia e Cola)")
+            st.write("Copie a chave PIX (CPF: ELIUDE BERNARDO DE SOUZA SILVA) abaixo usando o botão de copiar à direita:")
+            st.code("04994867460", language="text") 
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            st.markdown("##### 2. PAGAMENTO NA PLATAFORMA ASAAS")
+            st.write("Acesse o link para o portal de pagamentos seguro.")
+            st.link_button("💳 Abrir Plataforma ASAAS", "COLE_AQUI_SEU_LINK_DO_ASAAS", use_container_width=True)
                 
         with st.expander("📍 **Localização e Horários**", expanded=False):
             st.markdown("**Endereço:** Rua da Educação, 123 - Centro, Vitória de Santo Antão - PE")
@@ -383,7 +381,6 @@ if st.session_state.usuario_logado is None:
             st.markdown("- **Coord. Infantil:** [(81) 99394-3245](https://wa.me/5581993943245)")
             st.markdown("<br>", unsafe_allow_html=True)
             st.markdown("- **Coord. Fundamental 1:** [(81) 98508-0876](https://wa.me/5581985080876)")
-
 elif st.session_state.perfil_logado == "aluno":
     st.markdown(f"<h1 style='text-align: center;'>🎓 Portal do Aluno</h1>", unsafe_allow_html=True)
     
