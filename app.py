@@ -29,6 +29,20 @@ st.markdown("""
     [data-testid="stExpander"] details summary { background-color: #e8eaed !important; color: #1e3d59 !important; border-radius: 5px; }
     [data-testid="stExpander"] details summary p { color: #1e3d59 !important; font-weight: bold; }
     
+    /* CAIXA PIX - TEXTO LARANJA FORÇADO (Tiro de precisão para vencer o bloqueio nativo) */
+    [data-testid="stCodeBlock"] { border-radius: 8px; }
+    [data-testid="stCodeBlock"] code, 
+    [data-testid="stCodeBlock"] span { 
+        color: #ff9900 !important; 
+        font-weight: bold !important; 
+        font-size: 1.1em !important;
+    }
+    
+    /* BOTÃO ASAAS - TEXTO LARANJA FORÇADO */
+    [data-testid="stLinkButton"] button { border: 1px solid #a0a0a0 !important; border-radius: 8px !important; }
+    [data-testid="stLinkButton"] * { color: #ff9900 !important; font-weight: bold !important; }
+    [data-testid="stLinkButton"] button:hover { opacity: 0.8 !important; }
+
     .stApp { background-color: #f4f7f6; }
     .stApp p, .stApp span, .stApp label, .stApp div[data-testid="stMarkdownContainer"] { color: #1e3d59 !important; }
     h1, h2, h3, h4, h5 { color: #004d99 !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -348,21 +362,19 @@ if st.session_state.usuario_logado is None:
             st.markdown("Realize o pagamento da sua mensalidade de forma rápida e segura escolhendo uma das opções abaixo:")
             st.markdown("---")
             
-            # --- CAIXA CLARA E SIMPLIFICADA DO PIX ---
             st.markdown("##### 1. PIX (Cópia e Cola)")
-            st.write("Copie a chave PIX abaixo (CPF) e cole no aplicativo do seu banco:")
+            st.write("Copie a chave PIX (CPF: ELIUDE BERNARDO DE SOUZA SILVA) abaixo usando o botão de copiar à direita:")
             
-            # Usando st.info cria uma caixa azul clara, bonita e nativa do sistema. 
-            # O texto `04994867460` ganha um destaque natural e fácil de selecionar.
-            st.info("🔑 **ELIUDE BERNARDO DE SOUZA SILVA** \n\n ### `04994867460`")
+            # Caixa original de código restaurada
+            st.code("04994867460", language="text") 
             
             st.markdown("<br>", unsafe_allow_html=True)
             
-            # --- BOTÃO NATIVO ASAAS ---
             st.markdown("##### 2. PAGAMENTO NA PLATAFORMA ASAAS")
             st.write("Acesse o link para o portal de pagamentos seguros.")
-            # O parâmetro type="primary" pinta o botão automaticamente com as cores de destaque do seu app!
-            st.link_button("💳 Abrir Plataforma ASAAS", "https://api.whatsapp.com/send?phone=5547933007606", type="primary", use_container_width=True)
+            
+            # Botão original restaurado
+            st.link_button("💳 Abrir Plataforma ASAAS", "https://api.whatsapp.com/send?phone=5547933007606", use_container_width=True)
                 
         with st.expander("📍 **Nossa localização**", expanded=False):
             st.markdown("**Endereço:** Endereço: Rua Antônio José de Paiva, S/N Loteamento Real Vitória - Vitória de Santo Antão - PE")
