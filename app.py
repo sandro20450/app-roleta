@@ -29,15 +29,13 @@ st.markdown("""
     [data-testid="stExpander"] details summary { background-color: #e8eaed !important; color: #1e3d59 !important; border-radius: 5px; }
     [data-testid="stExpander"] details summary p { color: #1e3d59 !important; font-weight: bold; }
     
-    /* CAIXA PIX - TEXTO LARANJA (#ff9900) */
-    [data-testid="stCodeBlock"] { background-color: #cccccc !important; border-radius: 8px; padding: 2px;}
-    [data-testid="stCodeBlock"] pre { background-color: #cccccc !important; }
-    [data-testid="stCodeBlock"] code { color: #ff9900 !important; font-weight: bold !important; font-size: 1.1em;}
-    [data-testid="stCodeBlock"] span { color: #ff9900 !important; font-weight: bold !important; }
+    /* CAIXA PIX - TEXTO LARANJA FORÇADO (#ff9900) */
+    [data-testid="stCodeBlock"], [data-testid="stCodeBlock"] pre { background-color: #cccccc !important; border-radius: 8px; }
+    [data-testid="stCodeBlock"] * { color: #ff9900 !important; font-weight: bold !important; }
     
-    /* BOTÃO ASAAS - TEXTO LARANJA (#ff9900) */
+    /* BOTÃO ASAAS - TEXTO LARANJA FORÇADO (#ff9900) */
     [data-testid="stLinkButton"] button { background-color: #cccccc !important; border: 1px solid #a0a0a0 !important; border-radius: 8px !important; }
-    [data-testid="stLinkButton"] button p { color: #ff9900 !important; font-weight: bold !important; }
+    [data-testid="stLinkButton"] * { color: #ff9900 !important; font-weight: bold !important; }
     [data-testid="stLinkButton"] button:hover { background-color: #b3b3b3 !important; }
 
     .stApp { background-color: #f4f7f6; }
@@ -383,6 +381,7 @@ if st.session_state.usuario_logado is None:
             st.markdown("- **Coord. Infantil:** [(81) 99394-3245](https://wa.me/5581993943245)")
             st.markdown("<br>", unsafe_allow_html=True)
             st.markdown("- **Coord. Fundamental 1:** [(81) 98508-0876](https://wa.me/5581985080876)")
+
 elif st.session_state.perfil_logado == "aluno":
     st.markdown(f"<h1 style='text-align: center;'>🎓 Portal do Aluno</h1>", unsafe_allow_html=True)
     
@@ -492,7 +491,7 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
                 freq_media_pct = round((total_presencas / total_registros) * 100)
                 
             if 'data' in df_freq_calc.columns:
-                df_hoje = df_freq_calc[df_hoje['data'].astype(str) == hoje_str]
+                df_hoje = df_freq_calc[df_freq_calc['data'].astype(str) == hoje_str]
                 presentes_hoje = len(df_hoje[df_hoje['status'].astype(str).str.upper() == 'P'])
                 ausentes_hoje = len(df_hoje[df_hoje['status'].astype(str).str.upper() == 'F'])
 
