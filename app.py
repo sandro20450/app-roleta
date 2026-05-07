@@ -715,4 +715,4 @@ elif st.session_state.perfil_logado == "professor":
                             st.text_area("📄 Pré-Visualização:", resposta.text, height=500)
                         except Exception as e: st.error(f"Erro: {e}")
 
-}
+
