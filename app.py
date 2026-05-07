@@ -18,42 +18,25 @@ st.markdown("""
     [data-testid="stHeader"] { background-color: #d4edda !important; }
     [data-testid="stHeaderActionElements"] * { color: #d4edda !important; fill: #d4edda !important; background-color: transparent !important; }
     [data-testid="collapsedControl"] * { color: #000000 !important; fill: #000000 !important; }
+    
+    /* Mantém os ícones do menu flutuante visíveis (Tela cheia, Busca, CSV) */
     [data-testid="stElementToolbar"] button svg, 
     [data-testid="stElementToolbar"] button { color: #ffffff !important; fill: #ffffff !important; stroke: #ffffff !important; }
+    
     footer { display: none !important; visibility: hidden !important; }
     [data-testid="stSidebar"] { background-color: #e8eaed !important; border-right: 1px solid #cccccc; }
     
-    /* DOCUMENTAÇÃO: AJUSTE DE CONTRASTE DOS EXPANDERS E BOTÕES */
-    /* 1. Título dos Menus Expansíveis */
-    [data-testid="stExpander"] details summary {
-        background-color: #e8eaed !important; 
-        color: #1e3d59 !important;
-        border-radius: 5px;
-    }
-    [data-testid="stExpander"] details summary p {
-        color: #1e3d59 !important;
-        font-weight: bold;
-    }
+    [data-testid="stExpander"] details summary { background-color: #e8eaed !important; color: #1e3d59 !important; border-radius: 5px; }
+    [data-testid="stExpander"] details summary p { color: #1e3d59 !important; font-weight: bold; }
     
-    /* 2. Caixa do Código PIX (Fundo cinza e texto bem visível) */
     [data-testid="stCodeBlock"] { background-color: #cccccc !important; border-radius: 8px; padding: 2px;}
     [data-testid="stCodeBlock"] pre { background-color: #cccccc !important; }
     [data-testid="stCodeBlock"] code { color: #004d99 !important; font-weight: bold !important; font-size: 1.1em;}
     [data-testid="stCodeBlock"] span { color: #004d99 !important; font-weight: bold !important; }
     
-    /* 3. Botões de Link Externo (Plataforma de Pagamento) */
-    [data-testid="stLinkButton"] button {
-        background-color: #cccccc !important;
-        border: 1px solid #a0a0a0 !important;
-        border-radius: 8px !important;
-    }
-    [data-testid="stLinkButton"] button p {
-        color: #004d99 !important;
-        font-weight: bold !important;
-    }
-    [data-testid="stLinkButton"] button:hover {
-        background-color: #b3b3b3 !important; /* Fica um pouquinho mais escuro ao passar o rato */
-    }
+    [data-testid="stLinkButton"] button { background-color: #cccccc !important; border: 1px solid #a0a0a0 !important; border-radius: 8px !important; }
+    [data-testid="stLinkButton"] button p { color: #004d99 !important; font-weight: bold !important; }
+    [data-testid="stLinkButton"] button:hover { background-color: #b3b3b3 !important; }
 
     .stApp { background-color: #f4f7f6; }
     .stApp p, .stApp span, .stApp label, .stApp div[data-testid="stMarkdownContainer"] { color: #1e3d59 !important; }
@@ -70,7 +53,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =============================================================================
-# --- 2. CONEXÃO COM BANCO DE DADOS E MEMÓRIA ---
+# --- 2. CONEXÃO COM BANCO DE DADOS, MEMÓRIA E PDF ---
 # =============================================================================
 @st.cache_resource(ttl=3600, show_spinner=False)
 def get_gspread_client():
@@ -93,12 +76,10 @@ def carregar_tabela_completa(nome_aba):
         if not dados:
             if nome_aba == "Avisos": return pd.DataFrame(columns=["tipo", "aluno", "mensagem", "data"])
             return pd.DataFrame()
-            
         if len(dados) == 1:
             df = pd.DataFrame(columns=dados[0])
         else:
             df = pd.DataFrame(dados[1:], columns=dados[0])
-        
         df.columns = df.columns.astype(str).str.strip().str.lower()
         return df
     except Exception as e:
@@ -111,15 +92,10 @@ def carregar_usuarios():
             usuarios = {}
             for _, row in df.iterrows():
                 if str(row.get('usuario', '')).strip() != "":
-                    usuarios[str(row['usuario']).strip()] = { 
-                        "senha": str(row.get('senha', '')).strip(), 
-                        "perfil": str(row.get('perfil', '')).lower().strip(), 
-                        "nome": str(row.get('nome', '')).strip() 
-                    }
+                    usuarios[str(row['usuario']).strip()] = { "senha": str(row.get('senha', '')).strip(), "perfil": str(row.get('perfil', '')).lower().strip(), "nome": str(row.get('nome', '')).strip() }
             return usuarios
         return {}
-    except Exception:
-        return {}
+    except Exception: return {}
 
 def carregar_turmas():
     try:
@@ -129,8 +105,7 @@ def carregar_turmas():
             turmas = [t for t in turmas if t != ""]
             return sorted(turmas) if turmas else []
         return []
-    except:
-        return []
+    except: return []
 
 def carregar_alunos(turma):
     try:
@@ -144,8 +119,7 @@ def carregar_alunos(turma):
                 alunos = [a for a in alunos if a != ""]
                 return alunos if alunos else []
         return []
-    except Exception as e:
-        return []
+    except Exception as e: return []
 
 def buscar_dados_aluno(nome_aluno):
     try:
@@ -153,10 +127,8 @@ def buscar_dados_aluno(nome_aluno):
         col_nome = 'nome_aluno' if 'nome_aluno' in df.columns else ('aluno' if 'aluno' in df.columns else None)
         if not df.empty and col_nome:
             aluno_row = df[df[col_nome].astype(str).str.strip() == str(nome_aluno).strip()]
-            if not aluno_row.empty:
-                return aluno_row.iloc[0].to_dict()
-    except Exception:
-        return None
+            if not aluno_row.empty: return aluno_row.iloc[0].to_dict()
+    except Exception: return None
     return None
 
 def carregar_notas_aluno(nome_aluno):
@@ -165,8 +137,7 @@ def carregar_notas_aluno(nome_aluno):
         if not df.empty and 'aluno' in df.columns:
             return df[df['aluno'].astype(str).str.strip() == str(nome_aluno).strip()]
         return pd.DataFrame()
-    except: 
-        return pd.DataFrame() 
+    except: return pd.DataFrame() 
 
 def salvar_notas_bd(turma, disciplina, df_resultados):
     try:
@@ -176,40 +147,25 @@ def salvar_notas_bd(turma, disciplina, df_resultados):
             df_banco = carregar_tabela_completa("Notas")
             
             colunas_padrao = ['turma', 'aluno', 'disciplina', 'unidade_1', 'unidade_2', 'unidade_3', 'unidade_4', 'media_final', 'situacao']
-            if df_banco.empty:
-                df_banco = pd.DataFrame(columns=colunas_padrao)
+            if df_banco.empty: df_banco = pd.DataFrame(columns=colunas_padrao)
             
             for index, row in df_resultados.iterrows():
                 aluno_atual = str(row["ALUNO"]).strip()
-                
-                mask = (
-                    (df_banco['aluno'].astype(str).str.strip() == aluno_atual) &
-                    (df_banco['disciplina'].astype(str).str.strip() == disciplina.strip())
-                )
-                
+                mask = ((df_banco['aluno'].astype(str).str.strip() == aluno_atual) & (df_banco['disciplina'].astype(str).str.strip() == disciplina.strip()))
                 nova_linha = {
-                    'turma': turma,
-                    'aluno': aluno_atual,
-                    'disciplina': disciplina,
-                    'unidade_1': str(row.get("I Unidade", "-")),
-                    'unidade_2': str(row.get("II Unidade", "-")),
-                    'unidade_3': str(row.get("III Unidade", "-")),
-                    'unidade_4': str(row.get("IV Unidade", "-")),
-                    'media_final': str(row.get("MÉDIA FINAL", "-")),
-                    'situacao': str(row.get("SITUAÇÃO", "-"))
+                    'turma': turma, 'aluno': aluno_atual, 'disciplina': disciplina,
+                    'unidade_1': str(row.get("I Unidade", "-")), 'unidade_2': str(row.get("II Unidade", "-")),
+                    'unidade_3': str(row.get("III Unidade", "-")), 'unidade_4': str(row.get("IV Unidade", "-")),
+                    'media_final': str(row.get("MÉDIA FINAL", "-")), 'situacao': str(row.get("SITUAÇÃO", "-"))
                 }
-                
-                if df_banco[mask].empty:
-                    df_banco = pd.concat([df_banco, pd.DataFrame([nova_linha])], ignore_index=True)
+                if df_banco[mask].empty: df_banco = pd.concat([df_banco, pd.DataFrame([nova_linha])], ignore_index=True)
                 else:
                     idx = df_banco[mask].index[0]
-                    for col, val in nova_linha.items():
-                        df_banco.at[idx, col] = val
+                    for col, val in nova_linha.items(): df_banco.at[idx, col] = val
                         
             dados_lista = [df_banco.columns.values.tolist()] + df_banco.values.tolist()
             ws.clear()
             ws.update(values=dados_lista, range_name="A1")
-            
             st.cache_data.clear() 
             return True
     except Exception as e:
@@ -246,6 +202,53 @@ def sincronizar_aba_completa(nome_aba, df_editado):
     except Exception as e:
         st.error(f"Erro ao sincronizar a aba {nome_aba}: {e}")
         return False
+
+# DOCUMENTAÇÃO: MOTOR GERADOR DE PDF
+def gerar_pdf_boletim(nome_aluno, dados_aluno, df_boletim):
+    try:
+        from fpdf import FPDF
+    except ImportError:
+        return None 
+        
+    class PDF(FPDF):
+        def header(self):
+            self.set_font('Arial', 'B', 14)
+            self.cell(0, 10, 'SEEA - BOLETIM ESCOLAR OFICIAL', 0, 1, 'C')
+            self.ln(5)
+
+    pdf = PDF()
+    pdf.add_page()
+    
+    def limpa_txt(texto):
+        for emoji in ["🟢", "🟡", "⚪", "🔴"]:
+            texto = texto.replace(emoji, "")
+        return texto.strip().encode('latin-1', 'replace').decode('latin-1')
+
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 8, limpa_txt(f"Aluno(a): {nome_aluno}"), 0, 1)
+    
+    turma = dados_aluno.get('turma', 'N/A')
+    turno = dados_aluno.get('turno', 'N/A')
+    pdf.set_font('Arial', '', 10)
+    pdf.cell(0, 8, limpa_txt(f"Turma: {turma}  |  Turno: {turno}"), 0, 1)
+    pdf.ln(5)
+    
+    colunas = df_boletim.columns.tolist()
+    largura_col = 190 / len(colunas) 
+    
+    pdf.set_font('Arial', 'B', 9)
+    for col in colunas:
+        pdf.cell(largura_col, 8, limpa_txt(str(col)), 1, 0, 'C')
+    pdf.ln()
+    
+    pdf.set_font('Arial', '', 8)
+    for _, row in df_boletim.iterrows():
+        for col in colunas:
+            val = str(row[col])
+            pdf.cell(largura_col, 8, limpa_txt(val), 1, 0, 'C')
+        pdf.ln()
+        
+    return pdf.output(dest='S').encode('latin-1')
 
 # =============================================================================
 # --- 3. CONFIGURAÇÃO DA INTELIGÊNCIA ARTIFICIAL (GEMINI) ---
@@ -345,7 +348,7 @@ if st.session_state.usuario_logado is None:
             
         st.markdown("<br>", unsafe_allow_html=True)
         with st.expander("❓ Esqueci minha senha"):
-            st.info("Para recuperar o seu acesso, fale com a Secretaria.\n\n📞 (81) 98328-8495")
+            st.info("Para recuperar o seu acesso, fale com a Secretaria.\n\n📞 (81) 99999-9999\n📧 admin@seea.com.br")
 
     with col_info:
         st.markdown("### 📌 Informações Úteis")
@@ -353,39 +356,32 @@ if st.session_state.usuario_logado is None:
         with st.expander("💰 **Financeiro (Pagamentos e Taxas)**", expanded=False):
             st.markdown("Realize o pagamento da sua mensalidade de forma rápida e segura escolhendo uma das opções abaixo:")
             st.markdown("---")
-            
             c_pix1, c_pix2 = st.columns([2, 1])
             with c_pix1:
                 st.markdown("##### 1. PIX (Copia e Cola)")
-                st.write("Copie a chave PIX (CPF: ELIUDE bERNARDO DE SOUZA SILVA ) abaixo usando o botão de copiar à direita:")
+                st.write("Copie a chave PIX (CPF: ELIUDE BERNARDO DE SOUZA SILVA) abaixo usando o botão de copiar à direita:")
                 st.code("04994867460", language="text") 
-                
-                st.markdown("##### 3. PORTAL ASAAS")
-                st.write("Ou acesse o portal de pagamentos ASAAS.")
-                st.link_button("💳 Abrir Plataforma de Pagamento ASAAS", "https://api.whatsapp.com/send?phone=5547933007606", use_container_width=True)
-                
+                st.markdown("##### 3. PAGAMENTO NA PLATAFORMA ASAAS")
+                st.write("Acesse o link para o portal de pagamentos seguro.")
+                st.link_button("💳 Abrir Plataforma ASAAS", "COLE_AQUI_SEU_LINK_DO_ASAAS", use_container_width=True)
             with c_pix2:
                 st.markdown("##### 2. QR Code")
-                url_qr_code_teste = "https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg"
-                st.image(url_qr_code_teste, width=130, caption="Escanear PIX")
+                meu_link_qr_code = "COLE_AQUI_O_LINK_DA_SUA_IMAGEM"
+                st.image(meu_link_qr_code, width=130, caption="Escanear PIX")
                 
-        with st.expander("📍 **Nossa localização**", expanded=False):
-            st.markdown("**Endereço:** Endereço: Rua Antônio José de Paiva, S/N Loteamento Real Vitória - Vitória de Santo Antão - PE")
-            st.markdown("**Ponto de Referência:** 2ª rua à direita após a antiga Escola do Rotary (entrar ao lado da Igreja Assembleia de Deus).")
+        with st.expander("📍 **Localização e Horários**", expanded=False):
+            st.markdown("**Endereço:** Rua da Educação, 123 - Centro, Vitória de Santo Antão - PE")
+            st.markdown("**Horário de Funcionamento:** Segunda a Sexta, das 07h00 às 18h00.")
             st.markdown("---")
-            st.link_button("🗺️ Ver Rota no Google Maps", "https://www.google.com/maps/place/R.+Nossa+Sra.+da+Aparecida,+396+-+L%C3%ADdia+Queiroz,+Vit%C3%B3ria+de+Santo+Ant%C3%A3o+-+PE,+55614-700/@-8.1252024,-35.2906503,17z/data=!4m16!1m9!3m8!1s0x7aa54bd26c5d1c9:0x8f8f9c6e05c506a1!2sR.+Nossa+Sra.+da+Aparecida,+396+-+L%C3%ADdia+Queiroz,+Vit%C3%B3ria+de+Santo+Ant%C3%A3o+-+PE,+55614-700!3b1!8m2!3d-8.1253253!4d-35.2907675!10e5!16s%2Fg%2F11hpy78k5b!3m5!1s0x7aa54bd26c5d1c9:0x8f8f9c6e05c506a1!8m2!3d-8.1253253!4d-35.2907675!16s%2Fg%2F11hpy78k5b?entry=ttu&g_ep=EgoyMDI1MDYxMS4wIKXMDSoASAFQAw%3D%3D", use_container_width=True)
+            st.link_button("🗺️ Ver Rota no Google Maps", "https://maps.google.com", use_container_width=True)
             
         with st.expander("📞 **Contatos e Suporte**", expanded=False):
             st.markdown("Precisando de ajuda? Nossa equipe está pronta para atender:")
-            st.markdown("<br>", unsafe_allow_html=True) # Dá um pequeno espaço para respirar
-            
-            # LINKS DIRETOS PARA O WHATSAPP (A magia acontece aqui!)
+            st.markdown("<br>", unsafe_allow_html=True) 
             st.markdown("- **Secretaria (WhatsApp):** [(81) 98328-8495](https://wa.me/5581983288495)")
             st.markdown("<br>", unsafe_allow_html=True)
-            
             st.markdown("- **Coord. Infantil:** [(81) 99394-3245](https://wa.me/5581993943245)")
             st.markdown("<br>", unsafe_allow_html=True)
-            
             st.markdown("- **Coord. Fundamental 1:** [(81) 98508-0876](https://wa.me/5581985080876)")
 
 elif st.session_state.perfil_logado == "aluno":
@@ -416,16 +412,30 @@ elif st.session_state.perfil_logado == "aluno":
                 df_boletim_visual = df_notas_aluno[colunas_presentes]
                 
                 renomear_para_tela = {
-                    'disciplina': 'Disciplina',
-                    'unidade_1': 'I Unid.',
-                    'unidade_2': 'II Unid.',
-                    'unidade_3': 'III Unid.',
-                    'unidade_4': 'IV Unid.',
-                    'media_final': 'Média Final',
-                    'situacao': 'Situação'
+                    'disciplina': 'Disciplina', 'unidade_1': 'I Unid.', 'unidade_2': 'II Unid.',
+                    'unidade_3': 'III Unid.', 'unidade_4': 'IV Unid.', 'media_final': 'Média Final', 'situacao': 'Situação'
                 }
                 df_boletim_visual = df_boletim_visual.rename(columns=renomear_para_tela)
+                
                 st.dataframe(df_boletim_visual, hide_index=True, use_container_width=True)
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                pdf_bytes = gerar_pdf_boletim(st.session_state.usuario_logado, dados_do_aluno, df_boletim_visual)
+                if pdf_bytes:
+                    col_vazia, col_btn = st.columns([3, 1]) 
+                    with col_btn:
+                        st.download_button(
+                            label="📄 Baixar Boletim em PDF",
+                            data=pdf_bytes,
+                            file_name=f"Boletim_{st.session_state.usuario_logado}.pdf",
+                            mime="application/pdf",
+                            type="primary",
+                            use_container_width=True
+                        )
+                else:
+                    st.warning("⚠️ Ferramenta PDF não instalada. Administrador: adicione 'fpdf' no arquivo requirements.txt do GitHub.")
+
             else:
                 st.info("⚠️ A planilha de notas não está com as colunas formatadas corretamente (unidade_1, unidade_2...).")
         else:
