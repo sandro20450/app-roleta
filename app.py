@@ -13,15 +13,70 @@ import io
 # =============================================================================
 st.set_page_config(page_title="SEEA - Gestão Escolar", page_icon="🏫", layout="wide")
 
-# DOCUMENTAÇÃO: LIMPEZA DE CSS
-# Mantemos apenas a estrutura (sem forçar cores de fundo) para os painéis
+# DOCUMENTAÇÃO: NOVA UI/UX (VISUAL PREMIUM)
+# Utilizamos CSS avançado com sombras e transições, respeitando o Modo Claro/Escuro
 st.markdown("""
 <style>
     /* Esconde a marca d'água do Streamlit no rodapé */
     footer { display: none !important; visibility: hidden !important; }
     
-    .painel-selecao { border-radius: 15px; padding: 25px; border-top: 5px solid #004d99; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    .painel-login { border-radius: 15px; padding: 30px; border-top: 5px solid #004d99; box-shadow: 0 4px 10px rgba(0,0,0,0.15); margin-bottom: 20px; }
+    /* PAINÉIS CUSTOMIZADOS (EFEITO CARD FLUTUANTE) */
+    .painel-selecao, .painel-login { 
+        border-radius: 16px; 
+        padding: 30px; 
+        border-top: 5px solid #004d99; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+        margin-bottom: 25px; 
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border: 1px solid rgba(128,128,128,0.2);
+    }
+    
+    /* Animação ao passar o mouse nos painéis */
+    .painel-selecao:hover, .painel-login:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+    }
+
+    /* ESTILIZANDO CAIXAS NATIVAS (EXPANDERS) COMO CARDS */
+    [data-testid="stExpander"] {
+        border-radius: 12px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        border: 1px solid rgba(128,128,128,0.2);
+        transition: all 0.3s ease;
+        margin-bottom: 10px;
+    }
+    [data-testid="stExpander"]:hover {
+        box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+    }
+
+    /* BOTÕES ARREDONDADOS E SUAVES */
+    .stButton > button {
+        border-radius: 20px !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15) !important;
+    }
+
+    /* INPUTS E SELECTS MAIS MODERNOS E CURVILÍNEOS */
+    div[data-baseweb="input"] > div, div[data-baseweb="select"] > div {
+        border-radius: 10px !important;
+        transition: border 0.3s ease;
+    }
+    
+    /* MÉTRICAS COMO CARDS MODERNOS */
+    [data-testid="metric-container"] {
+        border-radius: 12px;
+        padding: 15px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        border: 1px solid rgba(128,128,128,0.1);
+        transition: transform 0.3s ease;
+    }
+    [data-testid="metric-container"]:hover {
+        transform: translateY(-3px);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -266,7 +321,7 @@ else:
         st.markdown("<p style='text-align:center; font-size:0.8em; color:#888;'>Sistema de Gestão Escolar</p>", unsafe_allow_html=True)
         st.markdown("---")
         
-        st.markdown(f"""<div style='background-color: #d4edda; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 1px solid #c3e6cb;'><span style='color: #155724 !important; font-weight: bold; font-size: 1.1em;'>👤 {st.session_state.usuario_logado}</span></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div style='background-color: rgba(0, 123, 255, 0.1); padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center; border: 1px solid rgba(0, 123, 255, 0.2);'><span style='font-weight: bold; font-size: 1.1em;'>👤 {st.session_state.usuario_logado}</span></div>""", unsafe_allow_html=True)
         
         if st.session_state.perfil_logado == "professor":
             st.markdown("<span style='color:#888; font-size:0.8em; font-weight:bold;'>PEDAGÓGICO</span>", unsafe_allow_html=True)
@@ -284,7 +339,7 @@ else:
             
         st.markdown("---")
         
-        if st.button("🔄 Atualizar Sistema (Limpar Memória)", use_container_width=True):
+        if st.button("🔄 Atualizar Sistema", use_container_width=True):
             st.cache_data.clear()
             st.success("Memória renovada!")
             time.sleep(1)
@@ -311,6 +366,7 @@ if st.session_state.usuario_logado is None:
     col_login, col_info = st.columns([1, 1.5])
     
     with col_login:
+        st.markdown("<div class='painel-login'>", unsafe_allow_html=True)
         st.markdown("<h3 style='text-align:center; color:#004d99; margin-bottom: 20px;'>🔐 Acesso ao Painel</h3>", unsafe_allow_html=True)
         user_input = st.text_input("Usuário", placeholder="Digite seu usuário")
         pass_input = st.text_input("Senha", type="password", placeholder="Digite sua senha")
@@ -322,6 +378,7 @@ if st.session_state.usuario_logado is None:
         st.markdown("<br>", unsafe_allow_html=True)
         with st.expander("❓ Esqueci minha senha"):
             st.info("Para recuperar o seu acesso, fale com a Secretaria.\n\n📞 (81) 98328-8495")
+        st.markdown("</div>", unsafe_allow_html=True)
             
     with col_info:
         st.markdown("### 📌 Informações Úteis")
@@ -361,10 +418,10 @@ elif st.session_state.perfil_logado == "aluno":
     dados_do_aluno = buscar_dados_aluno(st.session_state.usuario_logado)
     if dados_do_aluno:
         st.markdown(f"""
-        <div style='background-color:#e6f2ff; padding:15px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border: 1px solid #b3d9ff;'>
+        <div style='background-color: rgba(0, 123, 255, 0.05); padding:20px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border: 1px solid rgba(0, 123, 255, 0.1); box-shadow: 0 4px 6px rgba(0,0,0,0.02);'>
             <div>
-                <span style='font-size:1.2em; color:#1e3d59 !important;'>👤 <b>{st.session_state.usuario_logado}</b></span><br>
-                <span style='color:#004d99 !important; font-weight:bold;'>👥 Turma: {dados_do_aluno.get('turma', 'N/A')}  |  🏫 Ensino: {dados_do_aluno.get('ensino', 'N/A')}  |  ⏰ Turno: {dados_do_aluno.get('turno', 'N/A')}</span>
+                <span style='font-size:1.3em;'>👤 <b>{st.session_state.usuario_logado}</b></span><br>
+                <span style='font-weight:bold; opacity: 0.8;'>👥 Turma: {dados_do_aluno.get('turma', 'N/A')}  |  🏫 Ensino: {dados_do_aluno.get('ensino', 'N/A')}  |  ⏰ Turno: {dados_do_aluno.get('turno', 'N/A')}</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -463,7 +520,6 @@ elif st.session_state.perfil_logado in ["admin", "diretoria"]:
             if total_registros > 0:
                 freq_media_pct = round((total_presencas / total_registros) * 100)
                 
-            # CORREÇÃO APLICADA AQUI: df_freq_calc em vez de df_hoje no filtro
             if 'data' in df_freq_calc.columns:
                 df_hoje = df_freq_calc[df_freq_calc['data'].astype(str) == hoje_str]
                 presentes_hoje = len(df_hoje[df_hoje['status'].astype(str).str.upper() == 'P'])
@@ -538,7 +594,7 @@ elif st.session_state.perfil_logado == "professor":
             
     with aba_freq:
         st.markdown("<h2>Registro de Frequência e Conteúdo</h2>", unsafe_allow_html=True)
-        st.markdown("<div style='background-color:#ffffff; padding:20px; border-radius:10px; border: 1px solid #e0e0e0; margin-bottom: 20px;'>", unsafe_allow_html=True)
+        st.markdown("<div style='background-color:rgba(128,128,128,0.05); padding:25px; border-radius:12px; border: 1px solid rgba(128,128,128,0.2); margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.03);'>", unsafe_allow_html=True)
         col_turma, col_data = st.columns(2)
         
         lista_turmas = carregar_turmas()
@@ -549,7 +605,7 @@ elif st.session_state.perfil_logado == "professor":
         st.markdown("</div>", unsafe_allow_html=True)
         
         if selecao_turma and selecao_turma != "Selecione...":
-            st.markdown("<div style='display:flex; justify-content:space-between; padding:0 20px; color:#004d99; font-weight:bold;'><span>ALUNO</span><span>STATUS DE PRESENÇA</span></div><hr style='margin:5px 0; border-top: 2px solid #ccc;'>", unsafe_allow_html=True)
+            st.markdown("<div style='display:flex; justify-content:space-between; padding:0 20px; opacity:0.8; font-weight:bold;'><span>ALUNO</span><span>STATUS DE PRESENÇA</span></div><hr style='margin:5px 0; border-top: 2px solid rgba(128,128,128,0.2);'>", unsafe_allow_html=True)
             
             lista_alunos = carregar_alunos(selecao_turma)
             if not lista_alunos:
@@ -558,11 +614,11 @@ elif st.session_state.perfil_logado == "professor":
                 lista_presenca = []
                 for aluno in lista_alunos:
                     ca, cb = st.columns([3, 2])
-                    with ca: st.markdown(f"<span style='font-weight:bold; color:#1e3d59;'>{aluno}</span>", unsafe_allow_html=True)
+                    with ca: st.markdown(f"<span style='font-weight:bold;'>{aluno}</span>", unsafe_allow_html=True)
                     with cb: 
                         status_aluno = st.radio("Status", ["P", "F", "FJ"], horizontal=True, label_visibility="collapsed", key=f"rad_{aluno}")
                         lista_presenca.append({"aluno": aluno, "status": status_aluno})
-                    st.markdown("<hr style='margin:5px 0; opacity:0.3;'>", unsafe_allow_html=True)
+                    st.markdown("<hr style='margin:5px 0; opacity:0.1;'>", unsafe_allow_html=True)
                 
                 if st.button("💾 Salvar Chamada Escolar", type="primary", use_container_width=True):
                     if assunto_aula.strip() == "":
@@ -580,7 +636,7 @@ elif st.session_state.perfil_logado == "professor":
         
         if not st.session_state.diario_aberto:
             st.markdown(f"<h1 style='text-align:center;'>Bom dia, {st.session_state.usuario_logado.split()[0]}!</h1>", unsafe_allow_html=True)
-            st.markdown('<div class="painel-selecao">', unsafe_allow_html=True)
+            st.markdown("<div class='painel-selecao'>", unsafe_allow_html=True)
             st.text_input("👤 Professor", st.session_state.usuario_logado, disabled=True)
             
             c_sel1, c_sel2 = st.columns(2)
@@ -588,7 +644,7 @@ elif st.session_state.perfil_logado == "professor":
             with c_sel2: sel_disc = st.selectbox("📄 Disciplina", lista_disciplinas)
             
             sel_aval = st.selectbox("⚖️ Sistema de Avaliação", ["Selecione...", "Numérico (Notas 0 a 10)", "Conceitual (Ótimo, Bom, Regular)"])
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
             
             if sel_turma != "Selecione..." and sel_disc != "Selecione..." and sel_aval != "Selecione...":
                 if st.button("Abrir Diário de Lançamento ➔", type="primary", use_container_width=True):
@@ -601,10 +657,10 @@ elif st.session_state.perfil_logado == "professor":
 
         else:
             st.markdown(f"""
-            <div style='background-color:#e6f2ff; padding:15px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border: 1px solid #b3d9ff;'>
+            <div style='background-color: rgba(0, 123, 255, 0.05); padding:20px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border: 1px solid rgba(0, 123, 255, 0.1); box-shadow: 0 4px 6px rgba(0,0,0,0.02);'>
                 <div>
-                    <span style='color:#004d99 !important; font-weight:bold; font-size:0.9em;'>VISÃO ANUAL COMPLETA</span><br>
-                    <span style='font-size:1.2em; color:#1e3d59 !important;'>👤 <b>{st.session_state.usuario_logado}</b>  |  👥 {st.session_state.ctx_turma}  |  📄 {st.session_state.ctx_disc}  |  ⚖️ {st.session_state.ctx_aval}</span>
+                    <span style='font-weight:bold; font-size:0.9em; opacity: 0.8;'>VISÃO ANUAL COMPLETA</span><br>
+                    <span style='font-size:1.2em;'>👤 <b>{st.session_state.usuario_logado}</b>  |  👥 {st.session_state.ctx_turma}  |  📄 {st.session_state.ctx_disc}  |  ⚖️ {st.session_state.ctx_aval}</span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -714,5 +770,3 @@ elif st.session_state.perfil_logado == "professor":
                             st.success("✅ Concluído!")
                             st.text_area("📄 Pré-Visualização:", resposta.text, height=500)
                         except Exception as e: st.error(f"Erro: {e}")
-
-
